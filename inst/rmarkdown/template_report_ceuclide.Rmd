@@ -9,11 +9,8 @@ params:
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Assuming R Markdown package is installed
 
-knitr::opts_chunk$set(echo = FALSE)
-
-ceuclide <- function(dataset, formula, plot = TRUE,
-                     plot_title = "Euclidean Distance Between Groups",
-                     min_group_size = 3) {
+ceuclide <- function(dataset, formula, plot = TRUE, 
+                     min_group_size = 3, method = "average", max_index_sample = NULL, automatic_encoding = FALSE, na_removal = FALSE, grouping_stat = 'mean') {
   
   if (!is.data.frame(dataset))
     stop("The input must be a data frame.")
@@ -24,128 +21,251 @@ ceuclide <- function(dataset, formula, plot = TRUE,
   if (!all(grouping_vars %in% names(dataset)) && !("index" %in% grouping_vars))
     stop("Some grouping variables are not present in the dataset.")
   
+  if (!("index" %in% grouping_vars) && !missing(method)) {
+    message("When grouping variable is not index, we use all agglomeration methods")
+  }
+  
+  if (!("index" %in% grouping_vars) && !missing(max_index_sample)) {
+    message("max_index_sample is total when we specify grouping_vars")
+  }
+  
+  if (grouping_stat != 'median' && grouping_stat != 'mean' && grouping_stat != 'SDS') {
+    stop("grouping_stat must be 'median', 'mean' or 'SDS'")
+  }
+  
+  if (("index" %in% grouping_vars) && !missing(grouping_stat)) {
+    message("grouping_stat is only available with factors.")
+  }
+  
+  if (automatic_encoding == TRUE) {
+    dataset_factors <- sapply(dataset, is.factor)
+    dataset[dataset_factors] <- lapply(dataset[dataset_factors], as.numeric)
+  }
+  
   # If the user specified "~index", use the individual mode.
   if ("index" %in% grouping_vars) {
     if (!("index" %in% names(dataset))) {
-      message("Formula '~index' was used. In this mode, 'min_group_size' is always 1.")
-      idx <- rownames(dataset)
-      is_default_rownames <- is.null(idx) || all(idx == as.character(seq_len(nrow(dataset))))
-      if (is_default_rownames) {
-        message(" -> Using sequential numbers (1, 2, 3, ...) for the index.")
-        dataset$index <- seq_len(nrow(dataset))
-      } else {
-        message(" -> Using dataset's rownames for the index.")
-        dataset$index <- idx
-      }
+      message("Formula '~index' was used. In 'index' mode, 'min_group_size' is always 1.")
     }
     
     # In this case, grouping is performed for each row (i.e., each observation is its own group).
+    # Predictors are all variables except for "index"
+    # Perform missing values remotion on rows
+    if (na_removal == TRUE) {
+      dataset_imputed <- na.omit(dataset)
+    } else {
+      dataset_imputed <- dataset
+    }
+    
+    if (!missing(max_index_sample)) {
+      n_total <- nrow(dataset_imputed)
+      if (n_total > max_index_sample) {
+        message("Dataset of ", n_total, " rows. A random sampling of ", max_index_sample, " observations is performed.")
+        set.seed(111)
+        idx_sample <- sample(seq_len(n_total), max_index_sample)
+        dataset_imputed <- dataset_imputed[idx_sample, ]
+      }
+    }
+    
+    # identify numeric columns
+    numeric_cols <- sapply(dataset_imputed, is.numeric)
+    
+    # In this case, grouping is performed for each row (i.e., each observation is its own group).
     # Predictors are all variables except for "index".
-    predictors <- setdiff(names(dataset), "index")
+    predictors <- setdiff(names(dataset_imputed)[numeric_cols], "index")
+    data_for_dist <- as.matrix(dataset_imputed[, predictors])
     
-    ## Perform imputation and one-hot encoding (if necessary)
-    dataset_imputed <- na.omit(dataset)
-    predictors_data <- model.matrix(~ . - 1, data = dataset_imputed[, predictors, drop = FALSE])
-    predictors_data <- as.data.frame(predictors_data)
-    variances <-  sapply(predictors_data, var)
-    predictors_data <- predictors_data[, variances > 1e-9, drop = FALSE]
-    predictors <- colnames(predictors_data)
+    D2 <- dist(data_for_dist, method = 'euclidean')
     
-    # Convert predictors to a matrix to speed up calculations and standardize
-    predictors_mat <- as.matrix(predictors_data)
-    predictor_means <- colMeans2(predictors_mat, na.rm = TRUE)
-    predictor_sds <-  apply(predictors_mat, 2, sd)
-    predictor_sds[predictor_sds < 1e-9] <- 1 
-    X <- scale(predictors_mat, center = predictor_means, scale = predictor_sds)
+    if (plot) {
+      hc <- hclust(D2, method = method)
+      plot(hc, main = "Cluster Dendrogram on index using ceuclide")
+      (x <- identify(hc))
+      print(hclust(D2, method = method))
+    }
     
-    # Compute the Euclidean Distance matrix based on Euclidean distance
-    D <- round((dist(X)), digits = 2)
-    D <- as.matrix(D)
-    
-    return(list(index = list(distances = D)))
+    return(list(index = list(distances = as.matrix(D2))))
   }
   
-  
-  predictors <- setdiff(names(dataset), grouping_vars)
-  
-  if (length(predictors) != 0) {
-    
-    dataset_imputed <- na.omit(dataset)
-    predictors_data <- model.matrix(~ . - 1, data = dataset_imputed[, predictors, drop = FALSE])
-    predictors_data <- as.data.frame(predictors_data)
-    variances <-  sapply(predictors_data, var)
-    predictors_data <- predictors_data[, variances > 1e-9, drop = FALSE]
-    predictors <- colnames(predictors_data)
-    
-    dataset_prepared <- cbind(dataset_imputed[grouping_vars], predictors_data)
-    
-    predictors_mat <- as.matrix(predictors_data)
-    predictor_means <- colMeans2(predictors_mat, na.rm = TRUE)
-    predictor_sds <-  apply(predictors_mat, 2, sd)
-    predictor_sds[predictor_sds < 1e-9] <- 1 
-    predictors_data_scaled <- scale(predictors_mat, center = predictor_means, scale = predictor_sds)
-    
-    dataset_prepared_scaled <- cbind(dataset_imputed[grouping_vars], as.data.frame(predictors_data_scaled))
-    
-    dt <- as.data.frame(dataset_prepared_scaled)
-  } else if (length(predictors) == 0) {
-    dataset_imputed <- na.omit(dataset)
-    dataset_prepared <- (dataset_imputed)
-    dt <- as.data.frame(dataset_prepared)
+  dt <- as.data.frame(dataset)
+  if (na_removal == TRUE) {
+    dt <- na.omit(dt)
+  } else {
+    dt <- dt
   }
   
   result <- list()
   plot_list <- list()
-  # List to keep track of excluded groups for each variable
-  excluded_groups_list <- list()
   
   for (grouping_var in grouping_vars) {
     groups <- split(dt, dt[[grouping_var]])
     group_sizes <-  sapply(groups, nrow)
     valid_groups <- groups[group_sizes >= min_group_size]
-    # Identify excluded groups
-    excluded_groups <- names(groups)[group_sizes < min_group_size]
     
     if (length(valid_groups) < 2) {
-      warning(paste("Not enough valid groups (size >= ", min_group_size, ") for grouping variable:", grouping_var, "- skipping."))
+      warning(paste("Not enough valid groups for grouping variable:", grouping_var, "- skipping."))
       next
     }
     
     group_names <- names(valid_groups)
     n <- length(valid_groups)
     
-    if (length(predictors) != 0) {
+    if (grouping_stat == 'mean') {
+      
       means <-  lapply(valid_groups, function(dt_group) {
-        colMeans2(as.matrix(dt_group[, predictors]))
+        num_cols <- dt_group[sapply(dt_group, is.numeric)]
+        colMeans(num_cols)
       })
-    } else if (length(predictors) == 0) {
-      means <-  lapply(valid_groups, function(dt_group) {
-        colMeans2(as.matrix(dt_group))
-      })
-    }
-    
-    distances <- matrix(0, nrow = n, ncol = n)
-    rownames(distances) <- colnames(distances) <- group_names
-    for (i in 1:n) {
-      mean_i <- means[[i]]
-      for (j in 1:n) {
-        if (i != j) {
-          mean_j <- means[[j]]
-          distances[i, j] <- round(sqrt(sum2((mean_i - mean_j) ^ 2)), digits = 2)
-          # The distance matrix is symmetric
-          distances[j,i] <- distances[i,j]
+      
+      distances <- matrix(0, nrow = n, ncol = n)
+      rownames(distances) <- colnames(distances) <- group_names
+      for (i in 1:n) {
+        for (j in i:n) {
+          if (i == j) next
+          
+          vec_i <- means[[i]]
+          vec_j <- means[[j]]
+          
+          dissimilarity <- sqrt(sum(vec_i - vec_j)^2)
+          
+          distances[i, j] <- round(dissimilarity, digits = 7)
+          distances[j, i] <- distances[i, j]
         }
       }
+      
+      if (plot) {
+        dist_obj <- as.dist(distances)
+        if (attr(dist_obj, "Size") > 2) {
+          op <- par(mfrow = c(3,3))
+          hc <- hclust(as.dist(dist_obj), method = 'ward.D')
+          print(hc)
+          hc1 <- hclust(as.dist(dist_obj), method = 'ward.D2')
+          print(hc1[["labels"]])
+          hc2 <- hclust(as.dist(dist_obj), method = 'single')
+          hc3 <- hclust(as.dist(dist_obj), method = 'complete')
+          hc4 <- hclust(as.dist(dist_obj), method = 'average')
+          hc5 <- hclust(as.dist(dist_obj), method = 'mcquitty')
+          hc6 <- hclust(as.dist(dist_obj), method = 'median')
+          hc7 <- hclust(as.dist(dist_obj), method = 'centroid')
+          plot(hc, main = " ")
+          plot(hc1, main = " ")
+          plot(hc2, main = " ")
+          plot(hc3, main = " ")
+          plot(hc4, main = " ")
+          plot(hc5, main = " ")
+          plot(hc6, main = " ")
+          plot(hc7, main = " ")
+          mtext(paste("Dendrograms on mean values of groups in", grouping_var, "with various agglomeration methods using ceuclide"), side = 3, line = -2, outer = TRUE, cex = 1, font = 2)
+          par(mfrow = c(1,1))
+        } else {
+          message(paste("Skipping plot for", grouping_var, "not enough items to cluster"))
+        }
+      }
+    } else if (grouping_stat == 'median') {
+      
+      medians <-  lapply(valid_groups, function(dt_group) {
+        num_cols <- dt_group[sapply(dt_group, is.numeric)]
+        colMedians(as.matrix(num_cols))
+      })
+      
+      distances <- matrix(0, nrow = n, ncol = n)
+      rownames(distances) <- colnames(distances) <- group_names
+      for (i in 1:n) {
+        for (j in 1:n) {
+          median_i <- medians[[i]]
+          median_j <- medians[[j]]
+          
+          dissimilarity <- sqrt(sum(median_i - median_j)^2)  
+          
+          distances[i, j] <- round(dissimilarity, digits = 7)
+          distances[j, i] <- distances[i, j]
+        }
+      }
+      
+      if (plot) {
+        dist_obj <- as.dist(distances)
+        if (attr(dist_obj, "Size") > 2) {
+          op <- par(mfrow = c(3,3))
+          hc <- hclust(as.dist(dist_obj), method = 'ward.D')
+          print(hc)
+          hc1 <- hclust(as.dist(dist_obj), method = 'ward.D2')
+          print(hc1[["labels"]])
+          hc2 <- hclust(as.dist(dist_obj), method = 'single')
+          hc3 <- hclust(as.dist(dist_obj), method = 'complete')
+          hc4 <- hclust(as.dist(dist_obj), method = 'average')
+          hc5 <- hclust(as.dist(dist_obj), method = 'mcquitty')
+          hc6 <- hclust(as.dist(dist_obj), method = 'median')
+          hc7 <- hclust(as.dist(dist_obj), method = 'centroid')
+          plot(hc, main = " ")
+          plot(hc1, main = " ")
+          plot(hc2, main = " ")
+          plot(hc3, main = " ")
+          plot(hc4, main = " ")
+          plot(hc5, main = " ")
+          plot(hc6, main = " ")
+          plot(hc7, main = " ")
+          mtext(paste("Dendrograms on median values of groups in", grouping_var, "with various agglomeration methods using ceuclide"), side = 3, line = -2, outer = TRUE, cex = 1, font = 2)
+          par(mfrow = c(1,1))
+        } else {
+          message(paste("Skipping plot for", grouping_var, "not enough items to cluster"))
+        }
+      }
+    } else if (grouping_stat == 'SDS') {
+      sds <-  lapply(valid_groups, function(dt_group) {
+        num_cols <- dt_group[sapply(dt_group, is.numeric)]
+        colSds(as.matrix(num_cols))
+      })
+      
+      distances <- matrix(0, nrow = n, ncol = n)
+      rownames(distances) <- colnames(distances) <- group_names
+      for (i in 1:n) {
+        for (j in 1:n) {
+          sds_i <- sds[[i]]
+          sds_j <- sds[[j]]
+          
+          dissimilarity <- sqrt(sum(sds_i - sds_j)^2)
+          
+          distances[i, j] <- round(dissimilarity, digits = 7)
+          distances[j, i] <- distances[i, j]
+        }
+      }
+      
+      if (plot) {
+        dist_obj <- as.dist(distances)
+        if (attr(dist_obj, "Size") > 2) {
+          op <- par(mfrow = c(3,3))
+          hc <- hclust(as.dist(dist_obj), method = 'ward.D')
+          print(hc)
+          hc1 <- hclust(as.dist(dist_obj), method = 'ward.D2')
+          print(hc1[["labels"]])
+          hc2 <- hclust(as.dist(dist_obj), method = 'single')
+          hc3 <- hclust(as.dist(dist_obj), method = 'complete')
+          hc4 <- hclust(as.dist(dist_obj), method = 'average')
+          hc5 <- hclust(as.dist(dist_obj), method = 'mcquitty')
+          hc6 <- hclust(as.dist(dist_obj), method = 'median')
+          hc7 <- hclust(as.dist(dist_obj), method = 'centroid')
+          plot(hc, main = " ")
+          plot(hc1, main = " ")
+          plot(hc2, main = " ")
+          plot(hc3, main = " ")
+          plot(hc4, main = " ")
+          plot(hc5, main = " ")
+          plot(hc6, main = " ")
+          plot(hc7, main = " ")
+          mtext(paste("Dendrograms on standard deviation values of groups in", grouping_var, "with various agglomeration methods using ceuclide"), side = 3, line = -2, outer = TRUE, cex = 1, font = 2)
+          par(mfrow = c(1,1))
+        } else {
+          message(paste("Skipping plot for", grouping_var, "not enough items to cluster"))
+        }
+      }
+      
     }
-    
-    # Save the distance matrix and excluded groups for this variable
     result[[grouping_var]] <- list(distances = distances)
   }
-  
   return(result)
 }
 
-pvaluesceucl <- function(dataset, formula, pvalue.method = "permutation", plot = TRUE, seed = NULL, min_group_size = 3) {
+pvaluesceucl <- function(dataset, formula, pvalue.method = "permutation", seed = NULL, min_group_size = 3, num_replicas = 1000, automatic_encoding = FALSE, na_removal = FALSE, grouping_stat = 'mean') {
   
   if (!is.data.frame(dataset)) {
     stop("The input must be a data frame.")
@@ -160,69 +280,58 @@ pvaluesceucl <- function(dataset, formula, pvalue.method = "permutation", plot =
     stop("Some grouping variables are not present in the dataset.")
   }
   
-  if ("index" %in% grouping_vars && pvalue.method == "bootstrap") {
-    stop("p_values calculation not possible. 'bootstrap' method does not have sense with 'index'")
+  if ("index" %in% grouping_vars && pvalue.method %in% c("bootstrap", "permutation")) {
+    stop("p_values calculation not possible. '", pvalue.method, "' method does not make sense with 'index'")
   }
   
-  if ("index" %in% grouping_vars && pvalue.method == "permutation") {
-    stop("p_values calculation not possible. 'permutation' method does not have sense with 'index'")
-  }
-  
-  # Create lists to save the results (p-value matrices) and plots
   result_list <- list()
   plot_list <- list()
   excluded_message <- list()
   
-  # Iterate over each grouping variable
   for (idx in seq_along(grouping_vars)) {
     grouping_var <- grouping_vars[idx]
     
-    # Calculate Euclidean distances using ceuclide
-    euclidean_results <- ceuclide(dataset, as.formula(paste("~", grouping_var)),
-                                    plot = FALSE, min_group_size = min_group_size)
+    # Euclide 
+    euclidean_results <- ceuclide(dataset, as.formula(paste("~", grouping_var)), plot = FALSE, min_group_size = min_group_size, automatic_encoding = automatic_encoding, na_removal = na_removal, grouping_stat = grouping_stat)
     distances <- euclidean_results[[grouping_var]]$distances
     
-    # Number of groups
     n <- nrow(distances)
     
-    # Initialize the p-values matrix
-    p_values <- matrix(NA, nrow = n, ncol = n)
-    rownames(p_values) <- colnames(p_values) <- rownames(distances)
-    
-    null_distances_list <- list() # Initialize a list to store distances
+    null_distances_list <- list()
     
     if (!is.null(seed)) {
       set.seed(seed)
     }
     
-    if (pvalue.method == "permutation") {
-      message(paste("Running permutations for", grouping_var, "..."))
+    message(paste("Running", pvalue.method, "for", grouping_var, "..."))
+    
+    prev_p_values <- NULL
+    actual_replicas <- 0
+    
+    for (k in 1:num_replicas) {
+      actual_replicas <- k
       
-      for (k in 1: nrow(dataset)) { # Loop for permutations
+      # Null data generation (Permutation or Bootstrap)
+      if (pvalue.method == "permutation") {
         permuted_data <- dataset
         permuted_data[[grouping_var]] <- sample(permuted_data[[grouping_var]], replace = FALSE)
         
         permuted_results <- ceuclide(permuted_data,
-                                       as.formula(paste("~", grouping_var)),
-                                       plot = FALSE,
-                                       min_group_size = min_group_size)
+                                     as.formula(paste("~", grouping_var)), plot = FALSE, min_group_size = min_group_size, automatic_encoding = automatic_encoding, na_removal = na_removal, grouping_stat = grouping_stat)
         
         if (!is.null(permuted_results) && !is.null(permuted_results[[grouping_var]])) {
           null_distances_list[[k]] <- permuted_results[[grouping_var]]$distances
         } else {
-          null_distances_list[[k]] <- NULL # Store NULL if calculation fails
+          null_distances_list[[k]] <- NULL
         }
-      }
-    } else if (pvalue.method == "bootstrap") {
-      message(paste("Running bootstrap samples for", grouping_var, "..."))
-      for (k in 1: nrow(dataset)) { # Loop for bootstraps
+        
+      } else if (pvalue.method == "bootstrap") {
+        # CORRECTION BUG
         bootstrap_sample <- sample(nrow(dataset), replace = TRUE)
         bootstrap_data <- dataset[bootstrap_sample, ] 
         
         bootstrap_results <- ceuclide(bootstrap_data,
-                                        as.formula(paste("~", grouping_var)),
-                                        plot = FALSE,
-                                        min_group_size = min_group_size)
+                                      as.formula(paste("~", grouping_var)), plot = FALSE, min_group_size = min_group_size, automatic_encoding = automatic_encoding, na_removal = na_removal, grouping_stat = grouping_stat)
         
         if (!is.null(bootstrap_results) && !is.null(bootstrap_results[[grouping_var]])) {
           null_distances_list[[k]] <- bootstrap_results[[grouping_var]]$distances
@@ -230,36 +339,75 @@ pvaluesceucl <- function(dataset, formula, pvalue.method = "permutation", plot =
           null_distances_list[[k]] <- NULL
         }
       }
+      
+      # CHECK EARLY STOPPING 
+      if (k >= 500 && k %% 500 == 0) {
+        
+        # Calculate pvalue matrix on metrics until now
+        current_p_values <- matrix(NA, nrow = n, ncol = n)
+        
+        for (i in 1:n) {
+          for (j in i:n) {
+            if (i == j) next
+            
+            obs_dist <- distances[i, j]
+            reps <- sapply(null_distances_list[1:k], function(m) {
+              if (!is.null(m) && nrow(m) >= i && ncol(m) >= j && !is.na(m[i, j])) {
+                return(m[i, j])
+              } else {
+                return(NA)
+              }
+            })
+            
+            valid_reps <- reps[!is.na(reps)]
+            if (length(valid_reps) > 0) {
+              current_p_values[i, j] <- mean(valid_reps >= obs_dist)
+              current_p_values[j, i] <- current_p_values[i, j]
+            }
+          }
+        }
+        
+        # If we have a previous matrix
+        if (!is.null(prev_p_values)) {
+          max_diff <- max(abs(current_p_values - prev_p_values), na.rm = TRUE)
+          
+          if (max_diff < 0.0001) {
+            message(paste0("   -> Early stopping at replica ", k, 
+                           ": max variation p-value = ", round(max_diff, 4), " (< ", 0.0001, ")"))
+            break
+          }
+        }
+        
+        prev_p_values <- current_p_values
+      }
     }
     
-    # Now calculate p-values using the collected null distances
+    p_values <- matrix(NA, nrow = n, ncol = n)
+    rownames(p_values) <- colnames(p_values) <- rownames(distances)
+    
     for (i in 1:n) {
       for (j in i:n) {
         if (i == j) next
         
-        observed_distance <- distances[i, j]
-        
-        # Extract the vector of distances for the cell (i,j) from all saved matrices
-        replicated_distances <- sapply(null_distances_list, function(dist_matrix) {
-          if (!is.null(dist_matrix) && nrow(dist_matrix) >= i && ncol(dist_matrix) >= j && !is.na(dist_matrix[i, j])) {
-            return(dist_matrix[i, j])
+        obs_dist <- distances[i, j]
+        reps <- sapply(null_distances_list[1:actual_replicas], function(m) {
+          if (!is.null(m) && nrow(m) >= i && ncol(m) >= j && !is.na(m[i, j])) {
+            return(m[i, j])
           } else {
             return(NA)
           }
         })
         
-        valid_distances <- replicated_distances[!is.na(replicated_distances)]
-        
-        if (length(valid_distances) == 0) {
+        valid_reps <- reps[!is.na(reps)]
+        if (length(valid_reps) == 0) {
           p_values[i, j] <- NA
         } else {
-          # Calculate the p-value as a proportion of replicated distances >= to that observed
-          p_values[i, j] <- round(mean(valid_distances >= observed_distance, na.rm = TRUE), digits = 2)
+          p_values[i, j] <- round(mean(valid_reps >= obs_dist), digits = 7)
         }
-        
-        p_values[j, i] <- p_values[i, j] # Make the matrix symmetric
+        p_values[j, i] <- p_values[i, j]
       }
     }
+    
     result_list[[grouping_var]] <- p_values
     
     excluded_groups <- euclidean_results[[grouping_var]]$excluded_groups
@@ -270,39 +418,8 @@ pvaluesceucl <- function(dataset, formula, pvalue.method = "permutation", plot =
       message(excluded_message[[grouping_var]])
     }
   }
+  
   return(result_list)
-}
-
-plot_distances <- function(distances) {
-  distances_melt <- reshape2::melt(distances, na.rm = TRUE)
-      colnames(distances_melt) <- c("Var1", "Var2", "value")
-      
-      q <- ggplot2::ggplot(data = distances_melt, ggplot2::aes(x = Var1, y = Var2, fill = value)) +
-        ggplot2::geom_tile() +
-        ggplot2::scale_colour_brewer(palette = "Greens") +
-        ggplot2::geom_tile(color = "white", lwd = 1.5, linetype = 1) +
-        ggplot2::geom_text(aes(label = value), color = "white", size = 4) + 
-        ggplot2::labs(title = paste("Distances heatmap"), x = "", y = "", fill = "p_value") +
-        ggplot2::theme_minimal()
-      
-    print(q)
-}
-
-
-plot_p_values <- function(p_values) {
-      p_values_melt <- reshape2::melt(p_values, na.rm = TRUE)
-      colnames(p_values_melt) <- c("Var1", "Var2", "value")
-      
-      p <- ggplot2::ggplot(data = p_values_melt, ggplot2::aes(x = Var1, y = Var2, fill = value)) +
-        ggplot2::geom_tile() +
-        ggplot2::scale_colour_brewer(palette = "Greens") +
-        ggplot2::geom_tile(color = "white", lwd = 1.5, linetype = 1) +
-        ggplot2::geom_text(aes(label = value), color = "white", size = 4) + 
-        ggplot2::labs(title = paste("p-values heatmap"), x = "", y = "", fill = "p_value") +
-        ggplot2::theme_minimal() 
-      
-    print(p)
-
 }
 
 distances <- params$distances  # Replace with your actual distances data
@@ -316,17 +433,61 @@ if (!is.null(distances) && !all(is.na(distances))) {
 }
 
 if (!is.null(p_values) && !all(is.na(p_values))) {
-   cat(" --- P-values --- \n")
+   cat(" --- P-values with sampling --- \n")
    print(p_values)
 } else {
   print("No p_values available")
 }
 
-if (length(grouping_vars) == 1) {
-plot_distances(distances)
-}
+```
 
-if (length(grouping_vars) == 1) {
-plot_p_values(p_values)
+```{r echo=FALSE, fig.width=15, fig.height=10}
+if (!is.null(distances) && length(distances) > 0) {
+  
+  processed_vars <- c()
+  
+  for (grouping_var in names(distances)) {
+    
+    if (grouping_var %in% processed_vars) next
+    processed_vars <- c(processed_vars, grouping_var)
+    
+    current_item <- distances[[grouping_var]]
+    dist_matrix <- current_item$distances
+    
+    if (is.null(dist_matrix)) next
+    
+    dist_obj <- as.dist(dist_matrix)
+    
+    if(attr(dist_obj, "Size") > 2) {
+      cat(paste("\n\n### Dendrograms for the variable: ", grouping_var, "\n\n"))
+      
+      par(mfrow = c(3,3))
+      hc <- hclust(dist_obj, method = 'ward.D')
+      hc1 <- hclust(dist_obj, method = 'ward.D2')
+      hc2 <- hclust(dist_obj, method = 'single')
+      hc3 <- hclust(dist_obj, method = 'complete')
+      hc4 <- hclust(dist_obj, method = 'average')
+      hc5 <- hclust(dist_obj, method = 'mcquitty')
+      hc6 <- hclust(dist_obj, method = 'median')
+      hc7 <- hclust(dist_obj, method = 'centroid')
+      plot(hc, main = " ")
+      plot(hc1, main = " ")
+      plot(hc2, main = " ")
+      plot(hc3, main = " ")
+      plot(hc4, main = " ")
+      plot(hc5, main = " ")
+      plot(hc6, main = " ")
+      plot(hc7, main = " ")
+      mtext(paste("Dendrograms of groups in", grouping_var, "with various agglomeration methods, with euclidean distance"), side = 3, line = -2, outer = TRUE, cex = 1, font = 2)
+      par(mfrow = c(1,1))
+      
+      cat("\n**Labels**\n")
+      print(hc1[['labels']])
+      cat("\n")
+    } else {
+      message(paste("Skipping plot for", grouping_var, "not enough items to cluster"))
+    }
+  }
 }
 ```
+

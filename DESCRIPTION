@@ -1,7 +1,7 @@
 Package: cmahalanobis
 Type: Package
 Title: Calculate Distance Measures for DataFrames
-Version: 1.0.0
+Version: 1.1.0
 Date: 2025-09-13
 Authors@R: person(given = "Flavio",
                   family = "Gioia",
@@ -11,12 +11,11 @@ Maintainer: Flavio Gioia <flaviogioia.fg@gmail.com>
 Description: It provides functions that calculate Mahalanobis distance, Euclidean distance, Manhattan distance, Chebyshev distance, Hamming distance, Canberra distance, Minkowski dissimilarity (distance defined for p >= 1), Cosine dissimilarity, Bhattacharyya dissimilarity, Jaccard distance, Hellinger distance, Bray-Curtis dissimilarity, Sorensen-Dice dissimilarity between each pair of species in a list of data frames. These statistics are fundamental in various fields, such as cluster analysis, classification, and other applications of machine learning and data mining, where assessing similarity or dissimilarity between data is crucial. The package is designed to be flexible and easily integrated into data analysis workflows, providing reliable tools for evaluating distances in multidimensional contexts.
 License: GPL-3
 Encoding: UTF-8
-Imports: stats, ggplot2, reshape2, gridExtra, matrixStats
+Imports: stats, graphics, matrixStats
 Suggests: rmarkdown, testthat (>= 3.0.0)
 NeedsCompilation: no
-RoxygenNote: 7.3.3
 Packaged: 2025-09-14 07:42:56 UTC; flavi
 Author: Flavio Gioia [aut, cre] (ORCID:
     <https://orcid.org/0009-0000-0326-3840>)
 Repository: CRAN
-Date/Publication: 2025-09-14 11:30:19 UTC
+Config/roxygen2/version: 8.0.0

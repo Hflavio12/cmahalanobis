@@ -10,7 +10,11 @@ generate_report_cmahalanobis(
   pvalue.method = "permutation",
   seed = NULL,
   min_group_size = 3,
-  pvalues_chisq = FALSE
+  pvalues_chisq = FALSE,
+  num_replicas = 1000,
+  automatic_encoding = TRUE,
+  na_removal = TRUE,
+  grouping_stat = "mean"
 )
 }
 \arguments{
@@ -25,6 +29,14 @@ generate_report_cmahalanobis(
 \item{min_group_size}{Minimum group size to maintain. The default value is 3,therefore groups, inside variables, with less than 3 observations will be discarded.}
 
 \item{pvalues_chisq}{If TRUE, print the result of the chi-squared test on squared distances. The resulting distances with "pvalues_chisq = FALSE" are not squared; instead, with "pvalues_chisq = TRUE", the squared Mahalanobis distance matrix with corresponding p_values will be printed. Default is FALSE.}
+
+\item{num_replicas}{Number of permutations or bootstraps trials, the default value is 1000.}
+
+\item{automatic_encoding}{Logical, if TRUE, names inside factor variables will be transformed in numbers with ordinal order (1,2,....).}
+
+\item{na_removal}{Logical, if TRUE, missing value removal on rows is performed.}
+
+\item{grouping_stat}{When a factor variable is specified, calculate the specified grouping statistic for each factor. Available methods are: mean (arithmetic mean), median and SDS (standard deviations).}
 }
 \value{
 A Microsoft Word document about the Mahalanobis distances matrix or matrices (two or more) and the p_values matrix or matrices (two or more).
@@ -32,20 +44,22 @@ A Microsoft Word document about the Mahalanobis distances matrix or matrices (tw
 \description{
 This function takes a dataframe, a factor or factors (two or more) and returns a Microsoft Word document about the Mahalanobis distances matrix or matrices (two or more) and the p-values matrix or matrices.
 }
+\note{
+About pvalues, this function leverages on an early stopping procedure in which the resulting matrix is printed also if the specified number of replicas is not reached; if every 500 replicas the maximum difference between each p_value does not exceed 0.0001, the function will print the entire matrix, else it continues.
+}
 \examples{
-# Example with iris dataset
-data(iris)
 
-# Generate a report about the "Species" 
-# factor in the iris dataset using the "permutation" method.
-generate_report_cmahalanobis(iris, ~Species, min_group_size = 3)
+generate_report_cmahalanobis(CO2, ~Plant + Type,
+   pvalues_chisq = TRUE,
+   pvalue.method = "permutation",
+   seed = 122,
+   num_replicas = 10,
+   grouping_stat = 'median', 
+   automatic_encoding = TRUE)
 
-# Example with mtcars dataset
-data(mtcars)
-
-# Generate a report about the "am" and "vs" in mtcars using "bootstrap" method.
-generate_report_cmahalanobis(mtcars, ~am + vs,
-pvalue.method = "bootstrap",
-seed = 100, min_group_size = 2)
+generate_report_cmahalanobis(airquality, ~Ozone,
+   pvalues_chisq = FALSE,
+   pvalue.method = 'bootstrap',
+   na_removal = TRUE, num_replicas = 10)
  
 }

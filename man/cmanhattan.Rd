@@ -8,8 +8,12 @@ cmanhattan(
   dataset,
   formula,
   plot = TRUE,
-  plot_title = "Manhattan Distance Between Groups",
-  min_group_size = 3
+  min_group_size = 3,
+  method = "average",
+  max_index_sample = NULL,
+  automatic_encoding = FALSE,
+  na_removal = FALSE,
+  grouping_stat = "mean"
 )
 }
 \arguments{
@@ -17,11 +21,19 @@ cmanhattan(
 
 \item{formula}{The index of the dataframe, otherwise a variable or variables (two or more) with factors which you want to calculate the Manhattan distances matrix or matrices (two or more).}
 
-\item{plot}{Logical, if TRUE, a plot or plots (two or more) of the Manhattan distances matrix or matrices about factors (two or more) are displayed.}
-
-\item{plot_title}{If plot is TRUE, the title to be used for plot or plots about factors. The default value is TRUE.}
+\item{plot}{Logical, if TRUE, dendrograms with various agglomeration metrics for factors (two or more) are displayed. With "index" in formula, a dendrogram considering the observation is displayed.}
 
 \item{min_group_size}{Minimum group size to maintain. The default value is 3, therefore groups, inside variables, with less than 3 observations will be discarded. For "index", this value is always 1.}
+
+\item{method}{The agglomeration method for calculating dissimilarities between observations. Available methods are "ward.D", "ward.D2", "single", "complete", "average", "mcquitty", "median" or "centroid".}
+
+\item{max_index_sample}{A number of random samples from a dataset for which you want to calculate the dissimilarity for index mode, useful with very large dataset.}
+
+\item{automatic_encoding}{Logical, if TRUE, names inside factor variables will be transformed in numbers with ordinal order (1,2,....).}
+
+\item{na_removal}{Logical, if TRUE, missing value removal on rows is performed.}
+
+\item{grouping_stat}{When a factor variable is specified, calculate the specified grouping statistic for each factor. Available methods are: mean (arithmetic mean), median and SDS (standard deviations).}
 }
 \value{
 According to the option chosen in formula, with "index" the Manhattan distances matrix will be printed; instead, by specifying variables, the Manhattan distances matrix or matrices (two or more) between each pair of groups and, optionally, the plot or plots (two or more) will be printed.
@@ -30,24 +42,25 @@ According to the option chosen in formula, with "index" the Manhattan distances 
 This function takes a dataframe and a variable or variables (two or more) in input, and returns a matrix or matrices (two or more) with the Manhattan distances about the factors inside them. You can also select "index" to calculate the Manhattan distances between each row.
 }
 \note{
-If "index" is selected with variables, only distances between rows are calculated. Therefore, this snippet: "cmanhattan(mtcars, ~am + carb + index)" will print the distances only considering "index". Rows with NA values are omitted.
+If "index" is selected with variables, only distances between rows are calculated. Therefore, this snippet: "cmanhattan(mtcars, ~am + carb + index)" will print the distances only considering "index". Optionally, rows with NA values are omitted.
 }
 \examples{
-# Example with iris dataset
+# Example with the CO2 dataset
 
-data(iris)
+table(CO2$Plant)
 
-cmanhattan(iris, ~Species, plot = TRUE, 
-plot_title = "Manhattan Distance Between Groups", min_group_size = 3)
+cmanhattan(CO2, ~Plant, 
+   plot = TRUE, 
+   grouping_stat = 'median', 
+   automatic_encoding = TRUE)
 
-# Example with mtcars dataset
+# Example with the airquality dataset
 
-data(mtcars)
+summary(airquality)
 
-cmanhattan(mtcars, ~am + vs, plot = TRUE, 
-plot_title = "Manhattan Distance Between Groups", min_group_size = 3)
-
-# Calculate the Manhattan distance for 32 car models in "mtcars" dataset
-res <- cmanhattan(mtcars, ~index, min_group_size = 3)
+cmanhattan(airquality, ~index, 
+   plot = TRUE, 
+   na_removal = TRUE, 
+   max_index_sample = 40)
 
 }

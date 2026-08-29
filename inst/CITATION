@@ -1,0 +1,10 @@
+citHeader("To cite this package, use this resource: ")
+
+bibentry(
+  bibtype = "Misc",
+  title= "cmahalanobis: A R Package for Computing Mahalanobis Distance Between Factors",
+  author= "Flavio Gioia",
+  journal= "SSRN Electronic Journal",
+  year= "2024",
+  url= "https://api.semanticscholar.org/CorpusID:269518767",
+)
