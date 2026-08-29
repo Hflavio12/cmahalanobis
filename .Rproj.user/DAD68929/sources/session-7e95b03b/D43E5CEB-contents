@@ -1,0 +1,512 @@
+if (!("index" %in% grouping_vars) && !missing(method)) {
+message("When grouping variable is not index, we use all agglomeration methods")
+}
+if (!("index" %in% grouping_vars) && !missing(max_index_sample)) {
+message("max_index_sample is total when we specify grouping_vars")
+}
+if (grouping_stat != 'median' && grouping_stat != 'mean' && grouping_stat != 'SDS') {
+stop("grouping_stat must be 'median', 'mean' or 'SDS'")
+}
+if (("index" %in% grouping_vars) && !missing(grouping_stat)) {
+message("grouping_stat is only available with factors.")
+}
+if (automatic_encoding == TRUE) {
+dataset_factors <- sapply(dataset, is.factor)
+dataset[dataset_factors] <- lapply(dataset[dataset_factors], as.numeric)
+}
+# If the user specified "~index", use the individual mode.
+if ("index" %in% grouping_vars) {
+if (!("index" %in% names(dataset))) {
+message("Formula '~index' was used. In 'index' mode, 'min_group_size' is always 1.")
+}
+# In this case, grouping is performed for each row (i.e., each observation is its own group).
+# Predictors are all variables except for "index"
+# Perform missing values remotion on rows
+if (na_removal == TRUE) {
+dataset_imputed <- na.omit(dataset)
+} else {
+dataset_imputed <- dataset
+}
+if (!missing(max_index_sample)) {
+n_total <- nrow(dataset_imputed)
+if (n_total > max_index_sample) {
+message("Dataset of ", n_total, " rows. A random sampling of ", max_index_sample, " observations is performed.")
+set.seed(111)
+idx_sample <- sample(seq_len(n_total), max_index_sample)
+dataset_imputed <- dataset_imputed[idx_sample, ]
+}
+}
+# identify numeric columns
+numeric_cols <- sapply(dataset_imputed, is.numeric)
+# In this case, grouping is performed for each row (i.e., each observation is its own group).
+# Predictors are all variables except for "index".
+predictors <- setdiff(names(dataset_imputed)[numeric_cols], "index")
+data_for_dist <- as.matrix(dataset_imputed[, predictors])
+num <- as.matrix(dist(data_for_dist, method = 'manhattan'))
+r_sums <- rowSums(data_for_dist)
+den <- outer(r_sums, r_sums, FUN = '+')
+D <- (num / den)
+D <- round(D, digits = 7)
+D2 <- as.dist(D)
+if (plot) {
+hc <- hclust(D2, method = method)
+plot(hc, main = "Cluster Dendrogram on index using cbraycurtis")
+(x <- identify(hc))
+print(hclust(D2, method = method))
+}
+return(list(index = list(distances = as.matrix(D))))
+}
+dt <- as.data.frame(dataset)
+if (na_removal == TRUE) {
+dt <- na.omit(dt)
+} else {
+dt <- dt
+}
+result <- list()
+plot_list <- list()
+for (grouping_var in grouping_vars) {
+groups <- split(dt, dt[[grouping_var]])
+group_sizes <-  sapply(groups, nrow)
+valid_groups <- groups[group_sizes >= min_group_size]
+if (length(valid_groups) < 2) {
+warning(paste("Not enough valid groups for grouping variable:", grouping_var, "- skipping."))
+next
+}
+group_names <- names(valid_groups)
+n <- length(valid_groups)
+if (grouping_stat == 'mean') {
+means <-  lapply(valid_groups, function(dt_group) {
+num_cols <- dt_group[sapply(dt_group, is.numeric)]
+colMeans(num_cols)
+})
+distances <- matrix(0, nrow = n, ncol = n)
+rownames(distances) <- colnames(distances) <- group_names
+for (i in 1:n) {
+for (j in i:n) {
+if (i == j) next
+vec_i <- means[[i]]
+vec_j <- means[[j]]
+dissimilarity <- (sum2(abs(vec_i - vec_j))) / sum2((vec_i + vec_j))
+distances[i, j] <- round(dissimilarity, digits = 7)
+distances[j, i] <- distances[i, j]
+}
+}
+if (plot) {
+dist_obj <- as.dist(distances)
+if (attr(dist_obj, "Size") > 2) {
+op <- par(mfrow = c(3,3))
+hc <- hclust(as.dist(dist_obj), method = 'ward.D')
+print(hc)
+hc1 <- hclust(as.dist(dist_obj), method = 'ward.D2')
+print(hc1[["labels"]])
+hc2 <- hclust(as.dist(dist_obj), method = 'single')
+hc3 <- hclust(as.dist(dist_obj), method = 'complete')
+hc4 <- hclust(as.dist(dist_obj), method = 'average')
+hc5 <- hclust(as.dist(dist_obj), method = 'mcquitty')
+hc6 <- hclust(as.dist(dist_obj), method = 'median')
+hc7 <- hclust(as.dist(dist_obj), method = 'centroid')
+plot(hc, main = " ")
+plot(hc1, main = " ")
+plot(hc2, main = " ")
+plot(hc3, main = " ")
+plot(hc4, main = " ")
+plot(hc5, main = " ")
+plot(hc6, main = " ")
+plot(hc7, main = " ")
+mtext(paste("Dendrograms on mean values of groups in", grouping_var, "with various agglomeration methods using cbraycurtis"), side = 3, line = -2, outer = TRUE, cex = 1, font = 2)
+par(mfrow = c(1,1))
+} else {
+message(paste("Skipping plot for", grouping_var, "not enough items to cluster"))
+}
+}
+} else if (grouping_stat == 'median') {
+medians <-  lapply(valid_groups, function(dt_group) {
+num_cols <- dt_group[sapply(dt_group, is.numeric)]
+colMedians(as.matrix(num_cols))
+})
+distances <- matrix(0, nrow = n, ncol = n)
+rownames(distances) <- colnames(distances) <- group_names
+for (i in 1:n) {
+for (j in 1:n) {
+if (i == j) next
+median_i <- medians[[i]]
+median_j <- medians[[j]]
+dissimilarity <- (sum2(abs(median_i - median_j))) / sum2((median_i + median_j))
+distances[i, j] <- round(dissimilarity, digits = 7)
+distances[j, i] <- distances[i, j]
+}
+}
+if (plot) {
+dist_obj <- as.dist(distances)
+if (attr(dist_obj, "Size") > 2) {
+op <- par(mfrow = c(3,3))
+hc <- hclust(as.dist(dist_obj), method = 'ward.D')
+print(hc)
+hc1 <- hclust(as.dist(dist_obj), method = 'ward.D2')
+print(hc1[["labels"]])
+hc2 <- hclust(as.dist(dist_obj), method = 'single')
+hc3 <- hclust(as.dist(dist_obj), method = 'complete')
+hc4 <- hclust(as.dist(dist_obj), method = 'average')
+hc5 <- hclust(as.dist(dist_obj), method = 'mcquitty')
+hc6 <- hclust(as.dist(dist_obj), method = 'median')
+hc7 <- hclust(as.dist(dist_obj), method = 'centroid')
+plot(hc, main = " ")
+plot(hc1, main = " ")
+plot(hc2, main = " ")
+plot(hc3, main = " ")
+plot(hc4, main = " ")
+plot(hc5, main = " ")
+plot(hc6, main = " ")
+plot(hc7, main = " ")
+mtext(paste("Dendrograms on median values of groups in", grouping_var, "with various agglomeration methods using cbraycurtis"), side = 3, line = -2, outer = TRUE, cex = 1, font = 2)
+par(mfrow = c(1,1))
+} else {
+message(paste("Skipping plot for", grouping_var, "not enough items to cluster"))
+}
+}
+} else if (grouping_stat == 'SDS') {
+sds <-  lapply(valid_groups, function(dt_group) {
+num_cols <- dt_group[sapply(dt_group, is.numeric)]
+colSds(as.matrix(num_cols))
+})
+distances <- matrix(0, nrow = n, ncol = n)
+rownames(distances) <- colnames(distances) <- group_names
+for (i in 1:n) {
+for (j in 1:n) {
+if (i == j) next
+sds_i <- sds[[i]]
+sds_j <- sds[[j]]
+dissimilarity <- (sum2(abs(sds_i - sds_j))) / sum2((sds_i + sds_j))
+distances[i, j] <- round(dissimilarity, digits = 7)
+distances[j, i] <- distances[i, j]
+}
+}
+if (plot) {
+dist_obj <- as.dist(distances)
+if (attr(dist_obj, "Size") > 2) {
+op <- par(mfrow = c(3,3))
+hc <- hclust(as.dist(dist_obj), method = 'ward.D')
+print(hc)
+hc1 <- hclust(as.dist(dist_obj), method = 'ward.D2')
+print(hc1[["labels"]])
+hc2 <- hclust(as.dist(dist_obj), method = 'single')
+hc3 <- hclust(as.dist(dist_obj), method = 'complete')
+hc4 <- hclust(as.dist(dist_obj), method = 'average')
+hc5 <- hclust(as.dist(dist_obj), method = 'mcquitty')
+hc6 <- hclust(as.dist(dist_obj), method = 'median')
+hc7 <- hclust(as.dist(dist_obj), method = 'centroid')
+plot(hc, main = " ")
+plot(hc1, main = " ")
+plot(hc2, main = " ")
+plot(hc3, main = " ")
+plot(hc4, main = " ")
+plot(hc5, main = " ")
+plot(hc6, main = " ")
+plot(hc7, main = " ")
+mtext(paste("Dendrograms on standard deviation values of groups in", grouping_var, "with various agglomeration methods using cbraycurtis"), side = 3, line = -2, outer = TRUE, cex = 1, font = 2)
+par(mfrow = c(1,1))
+} else {
+message(paste("Skipping plot for", grouping_var, "not enough items to cluster"))
+}
+}
+}
+result[[grouping_var]] <- list(distances = distances)
+}
+return(result)
+}
+pvaluescbrcu(survey, ~Smoke,
+pvalue.method = "permutation",
+seed = 122,
+num_replicas = 50,
+grouping_stat = 'median',
+automatic_encoding = TRUE,
+na_removal = TRUE)
+pvaluescmaha(survey, ~Smoke,
+pvalue.method = "bootstrap",
+seed = 122,
+num_replicas = 50,
+grouping_stat = 'centroid',
+automatic_encoding = TRUE,
+na_removal = TRUE)
+pvaluescmaha(survey, ~Smoke,
+pvalue.method = "bootstrap",
+seed = 122,
+num_replicas = 50,
+grouping_stat = 'mean',
+automatic_encoding = TRUE,
+na_removal = TRUE)
+generate_report_cbraycurtis(survey, ~Smoke,
+pvalue.method = "permutation",
+seed = 122,
+num_replicas = 50,
+grouping_stat = 'median',
+automatic_encoding = TRUE,
+na_removal = TRUE)
+generate_report_cmahalanobis(survey, ~Smoke,
+pvalue.method = "bootstrap",
+seed = 122,
+num_replicas = 50,
+grouping_stat = 'mean',
+automatic_encoding = TRUE,
+na_removal = TRUE)
+cmahalanobis(survey, ~index,
+plot = TRUE,
+method = 'centroid',
+pvalues_chisq = TRUE,
+na_removal = TRUE,
+automatic_encoding = TRUE)
+ceuclide(survey, ~index,
+plot = TRUE,
+method = 'centroid',
+pvalues_chisq = TRUE,
+na_removal = TRUE,
+automatic_encoding = TRUE)
+ceuclide(survey, ~index,
+plot = TRUE,
+method = 'centroid',
+na_removal = TRUE,
+automatic_encoding = TRUE)
+#' # Example with the airquality dataset
+#'
+#' summary(airquality)
+#'
+#' ccosine(airquality, ~index,
+#'    plot = TRUE,
+#'    na_removal = TRUE,
+#'    max_index_sample = 40)
+#'
+#' @export
+ccosine <- function(dataset, formula, plot = TRUE,
+min_group_size = 3, method = "average", max_index_sample = NULL, automatic_encoding = FALSE, na_removal = FALSE, grouping_stat = 'mean') {
+if (!is.data.frame(dataset))
+stop("The input must be a data frame.")
+grouping_vars <- all.vars(formula)
+if (length(grouping_vars) == 0)
+stop("At least one grouping variable must be specified in the formula.")
+if (!all(grouping_vars %in% names(dataset)) && !("index" %in% grouping_vars))
+stop("Some grouping variables are not present in the dataset.")
+if (!("index" %in% grouping_vars) && !missing(method)) {
+message("When grouping variable is not index, we use all agglomeration methods")
+}
+if (!("index" %in% grouping_vars) && !missing(max_index_sample)) {
+message("max_index_sample is total when we specify grouping_vars")
+}
+if (("index" %in% grouping_vars) && !missing(grouping_stat)) {
+message("grouping_stat is only available with factors.")
+}
+if (automatic_encoding == TRUE) {
+dataset_factors <- sapply(dataset, is.factor)
+dataset[dataset_factors] <- lapply(dataset[dataset_factors], as.numeric)
+}
+if (grouping_stat != 'median' && grouping_stat != 'mean' && grouping_stat != 'SDS') {
+stop("grouping_stat must be 'median', 'mean' or 'SDS'")
+}
+# If the user specified "~index", use the individual mode.
+if ("index" %in% grouping_vars) {
+if (!("index" %in% names(dataset))) {
+message("Formula '~index' was used. In 'index' mode, 'min_group_size' is always 1.")
+}
+# In this case, grouping is performed for each row (i.e., each observation is its own group).
+# Predictors are all variables except for "index"
+# Perform missing values remotion on rows
+if (na_removal == TRUE) {
+dataset_imputed <- na.omit(dataset)
+} else {
+dataset_imputed <- dataset
+}
+if (!missing(max_index_sample)) {
+n_total <- nrow(dataset_imputed)
+if (n_total > max_index_sample) {
+message("Dataset of ", n_total, " rows. A random sampling of ", max_index_sample, " observations is performed.")
+set.seed(111)
+idx_sample <- sample(seq_len(n_total), max_index_sample)
+dataset_imputed <- dataset_imputed[idx_sample, ]
+}
+}
+# identify numeric columns
+numeric_cols <- sapply(dataset_imputed, is.numeric)
+# In this case, grouping is performed for each row (i.e., each observation is its own group).
+# Predictors are all variables except for "index".
+predictors <- setdiff(names(dataset_imputed)[numeric_cols], "index")
+data_for_dist <- as.matrix(dataset_imputed[, predictors])
+row_norms <- sqrt(rowSums(data_for_dist^2))
+data_norm <- data_for_dist / row_norms
+similarity_matrix <- tcrossprod(data_norm)
+D <- round(1 - similarity_matrix, digits = 7)
+D2 <- as.dist(D)
+if (plot) {
+hc <- hclust(D2, method = method)
+plot(hc, main = "Cluster Dendrogram on index using ccosine")
+(x <- identify(hc))
+print(hclust(D2, method = method))
+}
+return(list(index = list(distances = as.matrix(D))))
+}
+dt <- as.data.frame(dataset)
+if (na_removal == TRUE) {
+dt <- na.omit(dt)
+} else {
+dt <- dt
+}
+result <- list()
+plot_list <- list()
+for (grouping_var in grouping_vars) {
+groups <- split(dt, dt[[grouping_var]])
+group_sizes <-  sapply(groups, nrow)
+valid_groups <- groups[group_sizes >= min_group_size]
+if (length(valid_groups) < 2) {
+warning(paste("Not enough valid groups for grouping variable:", grouping_var, "- skipping."))
+next
+}
+group_names <- names(valid_groups)
+n <- length(valid_groups)
+if (grouping_stat == 'mean') {
+means <-  lapply(valid_groups, function(dt_group) {
+num_cols <- dt_group[sapply(dt_group, is.numeric)]
+colMeans(num_cols)
+})
+distances <- matrix(0, nrow = n, ncol = n)
+rownames(distances) <- colnames(distances) <- group_names
+for (i in 1:n) {
+for (j in i:n) {
+if (i == j) next
+vec_i <- means[[i]]
+vec_j <- means[[j]]
+dissimilarity <-  1 - (crossprod(vec_i, vec_j) / sqrt( crossprod(vec_i)*crossprod(vec_j) ))
+distances[i, j] <- round(dissimilarity, digits = 7)
+distances[j, i] <- distances[i, j]
+}
+}
+if (plot) {
+dist_obj <- as.dist(distances)
+if (attr(dist_obj, "Size") > 2) {
+op <- par(mfrow = c(3,3))
+hc <- hclust(as.dist(dist_obj), method = 'ward.D')
+print(hc)
+hc1 <- hclust(as.dist(dist_obj), method = 'ward.D2')
+print(hc1[["labels"]])
+hc2 <- hclust(as.dist(dist_obj), method = 'single')
+hc3 <- hclust(as.dist(dist_obj), method = 'complete')
+hc4 <- hclust(as.dist(dist_obj), method = 'average')
+hc5 <- hclust(as.dist(dist_obj), method = 'mcquitty')
+hc6 <- hclust(as.dist(dist_obj), method = 'median')
+hc7 <- hclust(as.dist(dist_obj), method = 'centroid')
+plot(hc, main = " ")
+plot(hc1, main = " ")
+plot(hc2, main = " ")
+plot(hc3, main = " ")
+plot(hc4, main = " ")
+plot(hc5, main = " ")
+plot(hc6, main = " ")
+plot(hc7, main = " ")
+mtext(paste("Dendrograms on mean values of groups in", grouping_var, "with various agglomeration methods using ccosine"), side = 3, line = -2, outer = TRUE, cex = 1, font = 2)
+par(mfrow = c(1,1))
+} else {
+message(paste("Skipping plot for", grouping_var, "not enough items to cluster"))
+}
+}
+} else if (grouping_stat == 'median') {
+medians <-  lapply(valid_groups, function(dt_group) {
+num_cols <- dt_group[sapply(dt_group, is.numeric)]
+colMedians(as.matrix(num_cols))
+})
+distances <- matrix(0, nrow = n, ncol = n)
+rownames(distances) <- colnames(distances) <- group_names
+for (i in 1:n) {
+for (j in 1:n) {
+median_i <- medians[[i]]
+median_j <- medians[[j]]
+dissimilarity <- crossprod(median_i, median_j) / sqrt( crossprod(median_i)*crossprod(median_j) )
+distances[i, j] <- round(dissimilarity, digits = 7)
+distances[j, i] <- distances[i, j]
+}
+}
+if (plot) {
+dist_obj <- as.dist(distances)
+if (attr(dist_obj, "Size") > 2) {
+op <- par(mfrow = c(3,3))
+hc <- hclust(as.dist(dist_obj), method = 'ward.D')
+print(hc)
+hc1 <- hclust(as.dist(dist_obj), method = 'ward.D2')
+print(hc1[["labels"]])
+hc2 <- hclust(as.dist(dist_obj), method = 'single')
+hc3 <- hclust(as.dist(dist_obj), method = 'complete')
+hc4 <- hclust(as.dist(dist_obj), method = 'average')
+hc5 <- hclust(as.dist(dist_obj), method = 'mcquitty')
+hc6 <- hclust(as.dist(dist_obj), method = 'median')
+hc7 <- hclust(as.dist(dist_obj), method = 'centroid')
+plot(hc, main = " ")
+plot(hc1, main = " ")
+plot(hc2, main = " ")
+plot(hc3, main = " ")
+plot(hc4, main = " ")
+plot(hc5, main = " ")
+plot(hc6, main = " ")
+plot(hc7, main = " ")
+mtext(paste("Dendrograms on median values of groups in", grouping_var, "with various agglomeration methods using ccosine"), side = 3, line = -2, outer = TRUE, cex = 1, font = 2)
+par(mfrow = c(1,1))
+} else {
+message(paste("Skipping plot for", grouping_var, "not enough items to cluster"))
+}
+}
+} else if (grouping_stat == 'SDS') {
+sds <-  lapply(valid_groups, function(dt_group) {
+num_cols <- dt_group[sapply(dt_group, is.numeric)]
+colSds(as.matrix(num_cols))
+})
+distances <- matrix(0, nrow = n, ncol = n)
+rownames(distances) <- colnames(distances) <- group_names
+for (i in 1:n) {
+for (j in 1:n) {
+sds_i <- sds[[i]]
+sds_j <- sds[[j]]
+dissimilarity <- crossprod(sds_i, sds_j) / sqrt( crossprod(sds_i)*crossprod(sds_j) )
+distances[i, j] <- round(dissimilarity, digits = 7)
+distances[j, i] <- distances[i, j]
+}
+}
+if (plot) {
+dist_obj <- as.dist(distances)
+if (attr(dist_obj, "Size") > 2) {
+op <- par(mfrow = c(3,3))
+hc <- hclust(as.dist(dist_obj), method = 'ward.D')
+print(hc)
+hc1 <- hclust(as.dist(dist_obj), method = 'ward.D2')
+print(hc1[["labels"]])
+hc2 <- hclust(as.dist(dist_obj), method = 'single')
+hc3 <- hclust(as.dist(dist_obj), method = 'complete')
+hc4 <- hclust(as.dist(dist_obj), method = 'average')
+hc5 <- hclust(as.dist(dist_obj), method = 'mcquitty')
+hc6 <- hclust(as.dist(dist_obj), method = 'median')
+hc7 <- hclust(as.dist(dist_obj), method = 'centroid')
+plot(hc, main = " ")
+plot(hc1, main = " ")
+plot(hc2, main = " ")
+plot(hc3, main = " ")
+plot(hc4, main = " ")
+plot(hc5, main = " ")
+plot(hc6, main = " ")
+plot(hc7, main = " ")
+mtext(paste("Dendrograms on standard deviation values of groups in", grouping_var, "with various agglomeration methods using ccosine"), side = 3, line = -2, outer = TRUE, cex = 1, font = 2)
+par(mfrow = c(1,1))
+} else {
+message(paste("Skipping plot for", grouping_var, "not enough items to cluster"))
+}
+}
+}
+result[[grouping_var]] <- list(distances = distances)
+}
+return(result)
+}
+ccosine(survey, ~Smoke,
+plot = TRUE,
+na_removal = TRUE,
+automatic_encoding = TRUE)
+install.packages(cranlogs)
+install.packages('cranlogs')
+library(cranlogs)
+stats <- cran_downloads(packages = "cmahalanobis")
+View(stats)
+stats <- cran_downloads(packages = "cmahalanobis", when = 'last-month')
+stats <- cran_downloads(packages = "cmahalanobis", when = 'last-year')
+stats <- cran_downloads(packages = "cmahalanobis", when = 'last-month')

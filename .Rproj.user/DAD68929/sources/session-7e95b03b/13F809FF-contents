@@ -1,0 +1,194 @@
+# cmahalanobis <img src="man/figures/logo.png" align="right" height="139" />
+
+<!-- badges: start -->
+[![R-CMD-check](https://img.shields.io/badge/R--CMD--check-passing-brightgreen.svg)](https://cran.r-project.org/)
+![License: GPL-3](https://img.shields.io/badge/License-GPL3-blue.svg)
+[![CRAN](https://www.r-pkg.org/badges/version/cmahalanobis)](https://cran.r-project.org/package=cmahalanobis)
+[![DOI](https://img.shields.io/badge/DOI-10.32614/CRAN.package.cmahalanobis-blue)](https://doi.org/10.32614/CRAN.package.cmahalanobis)
+[![Downloads](https://cranlogs.r-pkg.org/badges/grand-total/cmahalanobis)](https://cran.r-project.org/package=cmahalanobis)
+<!-- badges: end -->
+
+## Computing distance measures in dataframes
+
+**cmahalanobis** is an R package providing several functions to calculate 13 distance measures for factors and for observations with the corresponding pvalues. This package offers several functionalities, including plotting dendrograms if desired, the selection of a specified number of observations and options such as the number of permutations and bootstraps samples for pvalues.
+Finally, each distance measures has a function that generate a comprehensive report of distances and p-values in a Microsoft Word’s document. 
+
+---
+
+## Installation
+
+```r
+# From CRAN
+install.packages("cmahalanobis")
+```
+
+---
+
+## Overview
+
+### Distance measures calculation (13 functions)
+
+| Function | Purpose |
+|----------|--------|
+| `cbhattacharyya()` | Calculate the Bhattacharyya dissimilarities for each pair of factors or for the index |
+| `cbraycurtis()` | {Calculate the Bray-Curtis dissimilarities for each pair of factors or for the index |
+| `ccanberra()` | Calculate the Canberra distances for each pair of factors or for the index |
+| `cchebyshev()` | Calculate the Chebyshev distances for each pair of factors or for the index |
+| `ccosine()` | Calculate the Cosine dissimilarities for each pair of factors or for the index |
+| `ceuclide()` | Calculate the Euclidean distances for each pair of factors or for the index. |
+| `chamming()` | Calculate the Hamming distances for each pair of factors or for the index. |
+| `chellinger()` | Calculate the Hellinger distances for each pair of factors or for the index. |
+| `cjaccard()` | Calculate the Jaccard distance for each pair of factors or for the index |
+| `cmahalanobis()` | Calculate the Mahalanobis distances for each pair of factors or for the index |
+| `cmanhattan()` | Calculate the Manhattan distances for each pair of factors or for the index |
+| `cminkowski()` | Calculate the Minkowski distances for each pair of factors or for the index. |
+| `csorensendice()` | Calculate the Sorensen-Dice dissimilarities for each pair of factors or for the index. |
+
+### Pvalues calculation
+
+| Function | Purpose |
+|----------|----------|
+| `pvaluescbatt()` | Calculate the p_values matrix or matrices (two or more) for each factor inside variable or variables (two or more), using Bhattacharyya dissimilarities as a base. |
+| `pvaluescbrcu()` | Calculate the p_values matrix or matrices (two or more) for each factor inside variable or variables (two or more), using Bray-Curtis dissimilarity as a base. |
+| `pvaluesccanb()` | Calculate the p_values matrix or matrices (two or more) for each factor inside variable or variables (two or more), using Canberra distances as a base. |
+| `pvaluesccheb()` | Calculate the p_values matrix or matrices (two or more) for each factor inside variable or variables (two or more), using Chebyshev distances as a base. |
+| `pvaluesccosi()` | Calculate the p_values matrix or matrices (two or more) for each factor inside variable or variables (two or more), using Cosine dissimilarities as a base. |
+| `pvaluesceucl()` | Calculate the p_values matrix or matrices (two or more) for each pair of factors inside variable or variables (two or more), using Euclidean distances as a base. |
+| `pvalueschamm()` | Calculate the p_values matrix or matrices (two or more) for each factor inside variable or variables (two or more), using Hamming distances as a base. |
+| `pvalueschell()` | Calculate the p_values matrix or matrices (two or more) for each factor inside variable or variables (two or more), using Hellinger distances as a base. |
+| `pvaluescjacc()` | Calculate the p_values matrix or matrices (two or more) for each factor inside variable or variables (two or more), using Jaccard distances as a base. |
+| `pvaluescmaha()` | Calculate the p_values matrix or matrices (two or more) for each pair of factors inside variable or variables (two or more), using Mahalanobis distances as a base. |
+| `pvaluescmanh()` | Calculate the p_values matrix or matrices (two or more) for each factor inside variable or variables (two or more), using Manhattan distances as a base. |
+| `pvaluescmink()` | Calculate the p_values matrix or matrices (two or more) for each factor inside variable or variables (two or more), using Minkowski dissimilarities/distances as a base. |
+| `pvaluescsore()` | Calculate the p_values matrix or matrices (two or more) for each factor inside variable or variables (two or more), using Sorensen-Dice dissimilarities as a base. |
+
+### Generate Microsoft Word report
+
+| Function | Purpose |
+|----------|----------|
+| `generate_report_cbhattacharyya()` | Generate a Microsoft Word document about the Bhattacharyya dissimilarities matrix or matrices (two or more) and the p-values matrix or matrices (two or more). |
+| `generate_report_cbraycurtis()` | Generate a Microsoft Word document about the Bray-Curtis dissimilarities matrix or matrices (two or more) and the p-values matrix or matrices (two or more). |
+| `generate_report_ccanberra()` | Generate a Microsoft Word document about the Canberra distances matrix or matrices (two or more) and the p-values matrix or matrices (two or more). |
+| `generate_report_cchebyshev()` | Generate a Microsoft Word document about the Chebyshev distances matrix or matrices (two or more) and the p-values matrix or matrices (two or more). |
+| `generate_report_ccosine()` | Generate a Microsoft Word document about the Cosine dissimilarities matrix or matrices (two or more) and the p-values matrix or matrices (two or more). |
+| `generate_report_ceuclide()` | Generate a Microsoft Word document about the Euclidean distances matrix or matrices and the p-values matrix or matrices. |
+| `generate_report_chamming()` | Generate a Microsoft Word document about the Hamming distances matrix or matrices (two or more) and the p-values matrix or matrices (two or more). |
+| `generate_report_chellinger()` | Generate a Microsoft Word document about the Hellinger distances matrix or matrices (two or more) and the p-values matrix or matrices (two or more). |
+| `generate_report_cjaccard()` | Generate a Microsoft Word document about the Jaccard distances matrix or matrices (two or more) and the p-values matrix or matrices (two or more). |
+| `generate_report_cmahalanobis()` | Generate a Microsoft Word document about the Mahalanobis distances matrix or matrices and the p-values matrix or matrices. |
+| `generate_report_cmanhattan()` | Generate a Microsoft Word document about the Manhattan distances matrix or matrices (two or more) and the p-values matrix or matrices (two or more). |
+| `generate_report_cminkowski()` | Generate a Microsoft Word document about the Minkowski dissimilarities/distances matrix or matrices (two or more) and the p-values matrix or matrices (two or more). |
+| `generate_report_csorensendice()` | Generate a Microsoft Word document about the Sorensen-Dice dissimilarity matrix or matrices (two or more) and the p-values matrix or matrices (two or more). |
+
+---
+
+## Usage
+
+Every function is called with the data frame first, then the column names as
+character strings. Set `verbose = FALSE` to suppress the printed report and
+just capture the returned object.
+
+### Distance measures calculation
+
+```r
+library(MASS)
+library(cmahalanobis)
+
+## Load and analyze survey dataset
+summary(survey)
+
+# Apply Bray-Curtis dissimilarity, the comparison statistics is the median between factors inside Smoke
+cbraycurtis(survey, ~Smoke, 
+            plot = TRUE, 
+            grouping_stat = 'median', 
+            na_removal = TRUE, 
+            automatic_encoding = TRUE)
+            
+# Here we calculate the Mahalanobis distance between observations, printing p-values based on chi-squared distribution and using 'centroid' as agglomeration method
+cmahalanobis(survey, ~index, 
+              plot = TRUE, 
+              method = 'centroid',
+              pvalues_chisq = TRUE,
+              na_removal = TRUE, 
+              automatic_encoding = TRUE)
+
+
+```
+
+### pvalues
+
+We continue the previous examples.
+
+```r
+# Print pvalues based on permutation method
+
+pvaluescbrcu(survey, ~Smoke,
+    pvalue.method = "permutation",
+    seed = 122,
+    num_replicas = 50,
+    grouping_stat = 'median', 
+    automatic_encoding = TRUE,
+    na_removal = TRUE)
+    
+
+# Print pvalues based on bootstrap method
+pvaluescmaha(survey, ~Smoke,
+             pvalue.method = "bootstrap",
+             seed = 122,
+             num_replicas = 50,
+             grouping_stat = 'mean', 
+             automatic_encoding = TRUE,
+             na_removal = TRUE)    
+
+```
+
+### Exporting results
+
+```r
+# Export results
+generate_report_cbraycurtis(survey, ~Smoke,
+    pvalue.method = "permutation",
+    seed = 122,
+    num_replicas = 50,
+    grouping_stat = 'median', 
+    automatic_encoding = TRUE,
+    na_removal = TRUE)
+    
+generate_report_cmahalanobis(survey, ~Smoke,
+    pvalue.method = "bootstrap",
+    seed = 122,
+    num_replicas = 50,
+    grouping_stat = 'mean', 
+    automatic_encoding = TRUE,
+    na_removal = TRUE)
+
+
+```
+
+---
+
+## Citation
+
+```
+Gioia, Flavio, cmahalanobis: An R Package for Computing Mahalanobis Distance Between Factors (March 20, 2024). Available at SSRN: https://ssrn.com/abstract=4774700 or http://dx.doi.org/10.2139/ssrn.4774700
+```
+
+---
+
+## Author
+
+**Flavio Gioia** (Maintainer)
+Data Scientist 
+ORCID: [0009-0000-0326-3840](https://orcid.org/0009-0000-0326-3840)
+
+---
+
+## License
+
+GPL-3
+
+---
+
+## Contributing
+
+Contributions are welcome. Please submit issues or pull requests on GitHub.
