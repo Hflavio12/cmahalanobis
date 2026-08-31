@@ -84,10 +84,6 @@ install.packages("cmahalanobis")
 
 ## Usage
 
-Every function is called with the data frame first, then the column names as
-character strings. Set `verbose = FALSE` to suppress the printed report and
-just capture the returned object.
-
 ### Distance measures calculation
 
 ```r
