@@ -31,7 +31,7 @@ install.packages("cmahalanobis")
 | Function | Purpose |
 |----------|--------|
 | `cbhattacharyya()` | Calculate the Bhattacharyya dissimilarities for each pair of factors or for the index |
-| `cbraycurtis()` | {Calculate the Bray-Curtis dissimilarities for each pair of factors or for the index |
+| `cbraycurtis()` | Calculate the Bray-Curtis dissimilarities for each pair of factors or for the index |
 | `ccanberra()` | Calculate the Canberra distances for each pair of factors or for the index |
 | `cchebyshev()` | Calculate the Chebyshev distances for each pair of factors or for the index |
 | `ccosine()` | Calculate the Cosine dissimilarities for each pair of factors or for the index |
