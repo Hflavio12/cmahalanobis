@@ -21,7 +21,7 @@ Finally, each distance measures has a function that generate a comprehensive rep
 # From CRAN
 install.packages("cmahalanobis")
 
-FROM GitHub (recommended)
+# FROM GitHub (recommended)
 remotes::install_github('Hflavio12/cmahalanobis')
 ```
 ---
