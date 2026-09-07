@@ -7425,17 +7425,15 @@ csorensendice <- function(dataset, formula, plot = TRUE,
       }
     }
     
-    # identify numeric columns
-    numeric_cols <- sapply(dataset_imputed, is.numeric)
-    
     # In this case, grouping is performed for each row (i.e., each observation is its own group).
     # Predictors are all variables except for "index".
-    predictors <- setdiff(names(dataset_imputed)[numeric_cols], "index")
     data_for_dist <- as.matrix(dataset_imputed[, predictors])
     
-    squared_data_for_dist <- sqrt(data_for_dist)
+    num <- as.matrix(dist(data_for_dist, method = 'manhattan'))
+    r_sums <- rowSums(data_for_dist)
+    den <- outer(r_sums, r_sums, FUN = '+')
     
-    D2 <- dist(squared_data_for_dist, method = 'euclide') * 1/sqrt(2)
+    D2 <- (num / den)
     
     if (plot) {
       hc <- hclust(D2, method = method)
