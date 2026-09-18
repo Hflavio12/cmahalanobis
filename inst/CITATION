@@ -6,5 +6,6 @@ bibentry(
   author= "Flavio Gioia",
   journal= "SSRN Electronic Journal",
   year= "2024",
-  url= "https://api.semanticscholar.org/CorpusID:269518767",
+  url= "https://www.semanticscholar.org/paper/d7e1a842c237b532e8db6be28db340460081f969",
+  doi = "10.2139/ssrn.4774700"
 )

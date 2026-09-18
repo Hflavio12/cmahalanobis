@@ -75,7 +75,13 @@ cmahalanobis <- function(dataset, formula, plot = TRUE,
   
   if (automatic_encoding == TRUE) {
     dataset_factors <- sapply(dataset, is.factor)
+    char_cols <- sapply(dataset, is.character)
+    int_cols <- sapply(dataset, is.integer)
+    date_cols <- sapply(dataset, function(x) inherits(x, 'Date'))
     dataset[dataset_factors] <- lapply(dataset[dataset_factors], as.numeric)
+    dataset[char_cols] <- lapply(dataset[char_cols], function(x) as.numeric(as.factor(x)))
+    dataset[int_cols] <- lapply(dataset[int_cols], function(x) as.numeric(as.factor(x)))
+    dataset[date_cols] <- lapply(dataset[date_cols], function(x) as.numeric(as.factor(x)))
   }
   
   # If the user specified "~index", use the individual mode.
@@ -131,7 +137,11 @@ cmahalanobis <- function(dataset, formula, plot = TRUE,
     if (plot) {
       hc <- hclust(D2, method = method)
       plot(hc, main = "Cluster Dendrogram on index using cmahalanobis")
-      suppressWarnings(x <- identify(hc))
+      tryCatch({
+        suppressWarnings(x <- identify(hc))
+      }, error = function(e) {
+        message("cut of the tree not possible due to few observations")
+      })
       print(hclust(D2, method = method))
     }
     
@@ -165,7 +175,7 @@ cmahalanobis <- function(dataset, formula, plot = TRUE,
     valid_groups <- groups[group_sizes >= min_group_size]
     
     if (length(valid_groups) < 2) {
-      warning(paste("Not enough valid groups for grouping variable:", grouping_var, "- skipping."))
+      suppressWarnings(paste("Not enough valid groups for grouping variable:", grouping_var, "- skipping."))
       next
     }
     
@@ -745,7 +755,13 @@ ceuclide <- function(dataset, formula, plot = TRUE,
   
   if (automatic_encoding == TRUE) {
     dataset_factors <- sapply(dataset, is.factor)
+    char_cols <- sapply(dataset, is.character)
+    int_cols <- sapply(dataset, is.integer)
+    date_cols <- sapply(dataset, function(x) inherits(x, 'Date'))
     dataset[dataset_factors] <- lapply(dataset[dataset_factors], as.numeric)
+    dataset[char_cols] <- lapply(dataset[char_cols], function(x) as.numeric(as.factor(x)))
+    dataset[int_cols] <- lapply(dataset[int_cols], function(x) as.numeric(as.factor(x)))
+    dataset[date_cols] <- lapply(dataset[date_cols], function(x) as.numeric(as.factor(x)))
   }
   
   # If the user specified "~index", use the individual mode.
@@ -786,7 +802,11 @@ ceuclide <- function(dataset, formula, plot = TRUE,
     if (plot) {
       hc <- hclust(D2, method = method)
       plot(hc, main = "Cluster Dendrogram on index using ceuclide")
-      suppressWarnings(x <- identify(hc))
+      tryCatch({
+        suppressWarnings(x <- identify(hc))
+      }, error = function(e) {
+        message("cut of the tree not possible due to few observations")
+      })
       print(hclust(D2, method = method))
     }
     
@@ -809,7 +829,7 @@ ceuclide <- function(dataset, formula, plot = TRUE,
     valid_groups <- groups[group_sizes >= min_group_size]
     
     if (length(valid_groups) < 2) {
-      warning(paste("Not enough valid groups for grouping variable:", grouping_var, "- skipping."))
+      suppressWarnings(paste("Not enough valid groups for grouping variable:", grouping_var, "- skipping."))
       next
     }
     
@@ -1338,7 +1358,13 @@ cmanhattan <- function(dataset, formula, plot = TRUE,
   
   if (automatic_encoding == TRUE) {
     dataset_factors <- sapply(dataset, is.factor)
+    char_cols <- sapply(dataset, is.character)
+    int_cols <- sapply(dataset, is.integer)
+    date_cols <- sapply(dataset, function(x) inherits(x, 'Date'))
     dataset[dataset_factors] <- lapply(dataset[dataset_factors], as.numeric)
+    dataset[char_cols] <- lapply(dataset[char_cols], function(x) as.numeric(as.factor(x)))
+    dataset[int_cols] <- lapply(dataset[int_cols], function(x) as.numeric(as.factor(x)))
+    dataset[date_cols] <- lapply(dataset[date_cols], function(x) as.numeric(as.factor(x)))
   }
   
   # If the user specified "~index", use the individual mode.
@@ -1379,7 +1405,11 @@ cmanhattan <- function(dataset, formula, plot = TRUE,
     if (plot) {
       hc <- hclust(D2, method = method)
       plot(hc, main = "Cluster Dendrogram on index using cmanhattan")
-      suppressWarnings(x <- identify(hc))
+      tryCatch({
+        suppressWarnings(x <- identify(hc))
+      }, error = function(e) {
+        message("cut of the tree not possible due to few observations")
+      })
       print(hclust(D2, method = method))
     }
     
@@ -1402,7 +1432,7 @@ cmanhattan <- function(dataset, formula, plot = TRUE,
     valid_groups <- groups[group_sizes >= min_group_size]
     
     if (length(valid_groups) < 2) {
-      warning(paste("Not enough valid groups for grouping variable:", grouping_var, "- skipping."))
+      suppressWarnings(paste("Not enough valid groups for grouping variable:", grouping_var, "- skipping."))
       next
     }
     
@@ -1933,7 +1963,13 @@ cchebyshev <- function(dataset, formula, plot = TRUE,
   
   if (automatic_encoding == TRUE) {
     dataset_factors <- sapply(dataset, is.factor)
+    char_cols <- sapply(dataset, is.character)
+    int_cols <- sapply(dataset, is.integer)
+    date_cols <- sapply(dataset, function(x) inherits(x, 'Date'))
     dataset[dataset_factors] <- lapply(dataset[dataset_factors], as.numeric)
+    dataset[char_cols] <- lapply(dataset[char_cols], function(x) as.numeric(as.factor(x)))
+    dataset[int_cols] <- lapply(dataset[int_cols], function(x) as.numeric(as.factor(x)))
+    dataset[date_cols] <- lapply(dataset[date_cols], function(x) as.numeric(as.factor(x)))
   }
   
   # If the user specified "~index", use the individual mode.
@@ -1974,7 +2010,11 @@ cchebyshev <- function(dataset, formula, plot = TRUE,
     if (plot) {
       hc <- hclust(D, method = method)
       plot(hc, main = "Cluster Dendrogram on index using cchebyshev")
-      suppressWarnings(x <- identify(hc))
+      tryCatch({
+        suppressWarnings(x <- identify(hc))
+      }, error = function(e) {
+        message("cut of the tree not possible due to few observations")
+      })
       print(hclust(D, method = method))
     }
     
@@ -1997,7 +2037,7 @@ cchebyshev <- function(dataset, formula, plot = TRUE,
     valid_groups <- groups[group_sizes >= min_group_size]
     
     if (length(valid_groups) < 2) {
-      warning(paste("Not enough valid groups for grouping variable:", grouping_var, "- skipping."))
+      suppressWarnings(paste("Not enough valid groups for grouping variable:", grouping_var, "- skipping."))
       next
     }
     
@@ -2528,7 +2568,13 @@ chamming <- function(dataset, formula, plot = TRUE,
   
   if (automatic_encoding == TRUE) {
     dataset_factors <- sapply(dataset, is.factor)
+    char_cols <- sapply(dataset, is.character)
+    int_cols <- sapply(dataset, is.integer)
+    date_cols <- sapply(dataset, function(x) inherits(x, 'Date'))
     dataset[dataset_factors] <- lapply(dataset[dataset_factors], as.numeric)
+    dataset[char_cols] <- lapply(dataset[char_cols], function(x) as.numeric(as.factor(x)))
+    dataset[int_cols] <- lapply(dataset[int_cols], function(x) as.numeric(as.factor(x)))
+    dataset[date_cols] <- lapply(dataset[date_cols], function(x) as.numeric(as.factor(x)))
   }
   
   # If the user specified "~index", use the individual mode.
@@ -2575,7 +2621,11 @@ chamming <- function(dataset, formula, plot = TRUE,
     if (plot) {
       hc <- hclust(D2, method = method)
       plot(hc, main = "Cluster Dendrogram on index using chamming")
-      suppressWarnings(x <- identify(hc))
+      tryCatch({
+        suppressWarnings(x <- identify(hc))
+      }, error = function(e) {
+        message("cut of the tree not possible due to few observations")
+      })
       print(hclust(D2, method = method))
     }
     
@@ -2598,7 +2648,7 @@ chamming <- function(dataset, formula, plot = TRUE,
     valid_groups <- groups[group_sizes >= min_group_size]
     
     if (length(valid_groups) < 2) {
-      warning(paste("Not enough valid groups for grouping variable:", grouping_var, "- skipping."))
+      suppressWarnings(paste("Not enough valid groups for grouping variable:", grouping_var, "- skipping."))
       next
     }
     
@@ -3122,7 +3172,13 @@ ccanberra <- function(dataset, formula, plot = TRUE,
   
   if (automatic_encoding == TRUE) {
     dataset_factors <- sapply(dataset, is.factor)
+    char_cols <- sapply(dataset, is.character)
+    int_cols <- sapply(dataset, is.integer)
+    date_cols <- sapply(dataset, function(x) inherits(x, 'Date'))
     dataset[dataset_factors] <- lapply(dataset[dataset_factors], as.numeric)
+    dataset[char_cols] <- lapply(dataset[char_cols], function(x) as.numeric(as.factor(x)))
+    dataset[int_cols] <- lapply(dataset[int_cols], function(x) as.numeric(as.factor(x)))
+    dataset[date_cols] <- lapply(dataset[date_cols], function(x) as.numeric(as.factor(x)))
   }
   
   # If the user specified "~index", use the individual mode.
@@ -3163,7 +3219,11 @@ ccanberra <- function(dataset, formula, plot = TRUE,
     if (plot) {
       hc <- hclust(D, method = method)
       plot(hc, main = "Cluster Dendrogram on index using ccanberra")
-      suppressWarnings(x <- identify(hc))
+      tryCatch({
+        suppressWarnings(x <- identify(hc))
+      }, error = function(e) {
+        message("cut of the tree not possible due to few observations")
+      })
       print(hclust(D, method = method))
     }
     
@@ -3185,8 +3245,9 @@ ccanberra <- function(dataset, formula, plot = TRUE,
     group_sizes <-  sapply(groups, nrow)
     valid_groups <- groups[group_sizes >= min_group_size]
     
+    
     if (length(valid_groups) < 2) {
-      warning(paste("Not enough valid groups for grouping variable:", grouping_var, "- skipping."))
+      suppressWarnings(paste("Not enough valid groups for grouping variable:", grouping_var, "- skipping."))
       next
     }
     
@@ -3719,7 +3780,13 @@ cminkowski <- function(dataset, formula, p = 3, plot = TRUE,
   
   if (automatic_encoding == TRUE) {
     dataset_factors <- sapply(dataset, is.factor)
+    char_cols <- sapply(dataset, is.character)
+    int_cols <- sapply(dataset, is.integer)
+    date_cols <- sapply(dataset, function(x) inherits(x, 'Date'))
     dataset[dataset_factors] <- lapply(dataset[dataset_factors], as.numeric)
+    dataset[char_cols] <- lapply(dataset[char_cols], function(x) as.numeric(as.factor(x)))
+    dataset[int_cols] <- lapply(dataset[int_cols], function(x) as.numeric(as.factor(x)))
+    dataset[date_cols] <- lapply(dataset[date_cols], function(x) as.numeric(as.factor(x)))
   }
   
   # If the user specified "~index", use the individual mode.
@@ -3760,7 +3827,11 @@ cminkowski <- function(dataset, formula, p = 3, plot = TRUE,
     if (plot) {
       hc <- hclust(D2, method = method)
       plot(hc, main = "Cluster Dendrogram on index using cminkowski")
-      suppressWarnings(x <- identify(hc))
+      tryCatch({
+        suppressWarnings(x <- identify(hc))
+      }, error = function(e) {
+        message("cut of the tree not possible due to few observations")
+      })
       print(hclust(D2, method = method))
     }
     
@@ -3783,7 +3854,7 @@ cminkowski <- function(dataset, formula, p = 3, plot = TRUE,
     valid_groups <- groups[group_sizes >= min_group_size]
     
     if (length(valid_groups) < 2) {
-      warning(paste("Not enough valid groups for grouping variable:", grouping_var, "- skipping."))
+      suppressWarnings(paste("Not enough valid groups for grouping variable:", grouping_var, "- skipping."))
       next
     }
     
@@ -4318,7 +4389,13 @@ ccosine <- function(dataset, formula, plot = TRUE,
   
   if (automatic_encoding == TRUE) {
     dataset_factors <- sapply(dataset, is.factor)
+    char_cols <- sapply(dataset, is.character)
+    int_cols <- sapply(dataset, is.integer)
+    date_cols <- sapply(dataset, function(x) inherits(x, 'Date'))
     dataset[dataset_factors] <- lapply(dataset[dataset_factors], as.numeric)
+    dataset[char_cols] <- lapply(dataset[char_cols], function(x) as.numeric(as.factor(x)))
+    dataset[int_cols] <- lapply(dataset[int_cols], function(x) as.numeric(as.factor(x)))
+    dataset[date_cols] <- lapply(dataset[date_cols], function(x) as.numeric(as.factor(x)))
   }
   
   if (grouping_stat != 'median' && grouping_stat != 'mean' && grouping_stat != 'SDS') {
@@ -4370,7 +4447,11 @@ ccosine <- function(dataset, formula, plot = TRUE,
     if (plot) {
       hc <- hclust(D2, method = method)
       plot(hc, main = "Cluster Dendrogram on index using ccosine")
-      suppressWarnings(x <- identify(hc))
+      tryCatch({
+        suppressWarnings(x <- identify(hc))
+      }, error = function(e) {
+        message("cut of the tree not possible due to few observations")
+      })
       print(hclust(D2, method = method))
     }
     
@@ -4393,7 +4474,7 @@ ccosine <- function(dataset, formula, plot = TRUE,
     valid_groups <- groups[group_sizes >= min_group_size]
     
     if (length(valid_groups) < 2) {
-      warning(paste("Not enough valid groups for grouping variable:", grouping_var, "- skipping."))
+      suppressWarnings(paste("Not enough valid groups for grouping variable:", grouping_var, "- skipping."))
       next
     }
     
@@ -4911,7 +4992,13 @@ cbhattacharyya <- function(dataset, formula, plot = TRUE,
   
   if (automatic_encoding == TRUE) {
     dataset_factors <- sapply(dataset, is.factor)
+    char_cols <- sapply(dataset, is.character)
+    int_cols <- sapply(dataset, is.integer)
+    date_cols <- sapply(dataset, function(x) inherits(x, 'Date'))
     dataset[dataset_factors] <- lapply(dataset[dataset_factors], as.numeric)
+    dataset[char_cols] <- lapply(dataset[char_cols], function(x) as.numeric(as.factor(x)))
+    dataset[int_cols] <- lapply(dataset[int_cols], function(x) as.numeric(as.factor(x)))
+    dataset[date_cols] <- lapply(dataset[date_cols], function(x) as.numeric(as.factor(x)))
   }
   
   if (("index" %in% grouping_vars) && !missing(grouping_stat)) {
@@ -4975,7 +5062,11 @@ cbhattacharyya <- function(dataset, formula, plot = TRUE,
     if (plot) {
       hc <- hclust(D2, method = method)
       plot(hc, main = "Cluster Dendrogram on index using cbhattacharyya")
-      suppressWarnings(x <- identify(hc))
+      tryCatch({
+        suppressWarnings(x <- identify(hc))
+      }, error = function(e){
+        message("cut of the tree not possible due to few observations")
+      })
       print(hclust(D2, method = method))
     }
     
@@ -4998,7 +5089,7 @@ cbhattacharyya <- function(dataset, formula, plot = TRUE,
     valid_groups <- groups[group_sizes >= min_group_size]
     
     if (length(valid_groups) < 2) {
-      warning(paste("Not enough valid groups for grouping variable:", grouping_var, "- skipping."))
+      suppressWarnings((paste("Not enough valid groups for grouping variable:", grouping_var, "- skipping.")))
       next
     }
     
@@ -5558,7 +5649,13 @@ cjaccard <- function(dataset, formula, plot = TRUE,
   
   if (automatic_encoding == TRUE) {
     dataset_factors <- sapply(dataset, is.factor)
+    char_cols <- sapply(dataset, is.character)
+    int_cols <- sapply(dataset, is.integer)
+    date_cols <- sapply(dataset, function(x) inherits(x, 'Date'))
     dataset[dataset_factors] <- lapply(dataset[dataset_factors], as.numeric)
+    dataset[char_cols] <- lapply(dataset[char_cols], function(x) as.numeric(as.factor(x)))
+    dataset[int_cols] <- lapply(dataset[int_cols], function(x) as.numeric(as.factor(x)))
+    dataset[date_cols] <- lapply(dataset[date_cols], function(x) as.numeric(as.factor(x)))
   }
   
   # If the user specified "~index", use the individual mode.
@@ -5602,7 +5699,11 @@ cjaccard <- function(dataset, formula, plot = TRUE,
     if (plot) {
       hc <- hclust(D2, method = method)
       plot(hc, main = "Cluster Dendrogram on index using cjaccard")
-      suppressWarnings(x <- identify(hc))
+      tryCatch({
+        suppressWarnings(x <- identify(hc))
+      }, error = function(e) {
+        message("cut of the tree not possible due to few observations")
+      })
       print(hclust(D2, method = method))
     }
     
@@ -5625,7 +5726,7 @@ cjaccard <- function(dataset, formula, plot = TRUE,
     valid_groups <- groups[group_sizes >= min_group_size]
     
     if (length(valid_groups) < 2) {
-      warning(paste("Not enough valid groups for grouping variable:", grouping_var, "- skipping."))
+      suppressWarnings(paste("Not enough valid groups for grouping variable:", grouping_var, "- skipping."))
       next
     }
     
@@ -6168,7 +6269,13 @@ chellinger <- function(dataset, formula, plot = TRUE,
   
   if (automatic_encoding == TRUE) {
     dataset_factors <- sapply(dataset, is.factor)
+    char_cols <- sapply(dataset, is.character)
+    int_cols <- sapply(dataset, is.integer)
+    date_cols <- sapply(dataset, function(x) inherits(x, 'Date'))
     dataset[dataset_factors] <- lapply(dataset[dataset_factors], as.numeric)
+    dataset[char_cols] <- lapply(dataset[char_cols], function(x) as.numeric(as.factor(x)))
+    dataset[int_cols] <- lapply(dataset[int_cols], function(x) as.numeric(as.factor(x)))
+    dataset[date_cols] <- lapply(dataset[date_cols], function(x) as.numeric(as.factor(x)))
   }
   
   # Handling negative values, transform them in 0
@@ -6227,7 +6334,11 @@ chellinger <- function(dataset, formula, plot = TRUE,
     if (plot) {
       hc <- hclust(D2, method = method)
       plot(hc, main = "Cluster Dendrogram on index using chellinger")
-      suppressWarnings(x <- identify(hc))
+      tryCatch({
+        suppressWarnings(x <- identify(hc))
+      }, error = function(e) {
+        message("cut of the tree not possible due to few observations")
+      })
       print(hclust(D2, method = method))
     }
     
@@ -6250,7 +6361,7 @@ chellinger <- function(dataset, formula, plot = TRUE,
     valid_groups <- groups[group_sizes >= min_group_size]
     
     if (length(valid_groups) < 2) {
-      warning(paste("Not enough valid groups for grouping variable:", grouping_var, "- skipping."))
+      suppressWarnings(paste("Not enough valid groups for grouping variable:", grouping_var, "- skipping."))
       next
     }
     
@@ -6795,7 +6906,13 @@ cbraycurtis <- function(dataset, formula, plot = TRUE,
   
   if (automatic_encoding == TRUE) {
     dataset_factors <- sapply(dataset, is.factor)
+    char_cols <- sapply(dataset, is.character)
+    int_cols <- sapply(dataset, is.integer)
+    date_cols <- sapply(dataset, function(x) inherits(x, 'Date'))
     dataset[dataset_factors] <- lapply(dataset[dataset_factors], as.numeric)
+    dataset[char_cols] <- lapply(dataset[char_cols], function(x) as.numeric(as.factor(x)))
+    dataset[int_cols] <- lapply(dataset[int_cols], function(x) as.numeric(as.factor(x)))
+    dataset[date_cols] <- lapply(dataset[date_cols], function(x) as.numeric(as.factor(x)))
   }
   
   # If the user specified "~index", use the individual mode.
@@ -6843,7 +6960,11 @@ cbraycurtis <- function(dataset, formula, plot = TRUE,
     if (plot) {
       hc <- hclust(D2, method = method)
       plot(hc, main = "Cluster Dendrogram on index using cbraycurtis")
-      suppressWarnings(x <- identify(hc))
+      tryCatch({
+        suppressWarnings(x <- identify(hc))
+      }, error = function(e) {
+        message("cut of the tree not possible due to few observations")
+      })
       print(hclust(D2, method = method))
     }
     
@@ -6866,7 +6987,7 @@ cbraycurtis <- function(dataset, formula, plot = TRUE,
     valid_groups <- groups[group_sizes >= min_group_size]
     
     if (length(valid_groups) < 2) {
-      warning(paste("Not enough valid groups for grouping variable:", grouping_var, "- skipping."))
+      suppressWarnings((paste("Not enough valid groups for grouping variable:", grouping_var, "- skipping.")))
       next
     }
     
@@ -7397,7 +7518,13 @@ csorensendice <- function(dataset, formula, plot = TRUE,
   
   if (automatic_encoding == TRUE) {
     dataset_factors <- sapply(dataset, is.factor)
+    char_cols <- sapply(dataset, is.character)
+    int_cols <- sapply(dataset, is.integer)
+    date_cols <- sapply(dataset, function(x) inherits(x, 'Date'))
     dataset[dataset_factors] <- lapply(dataset[dataset_factors], as.numeric)
+    dataset[char_cols] <- lapply(dataset[char_cols], function(x) as.numeric(as.factor(x)))
+    dataset[int_cols] <- lapply(dataset[int_cols], function(x) as.numeric(as.factor(x)))
+    dataset[date_cols] <- lapply(dataset[date_cols], function(x) as.numeric(as.factor(x)))
   }
   
   # If the user specified "~index", use the individual mode.
@@ -7438,7 +7565,11 @@ csorensendice <- function(dataset, formula, plot = TRUE,
     if (plot) {
       hc <- hclust(D2, method = method)
       plot(hc, main = "Cluster Dendrogram on index using csorensendice")
-      suppressWarnings(x <- identify(hc))
+      tryCatch({
+        suppressWarnings(x <- identify(hc))
+      }, error = function(e) {
+        message("cut of the tree not possible due to few observations")
+      })
       print(hclust(D2, method = method))
     }
     
@@ -7461,7 +7592,7 @@ csorensendice <- function(dataset, formula, plot = TRUE,
     valid_groups <- groups[group_sizes >= min_group_size]
     
     if (length(valid_groups) < 2) {
-      warning(paste("Not enough valid groups for grouping variable:", grouping_var, "- skipping."))
+      suppressWarnings(paste("Not enough valid groups for grouping variable:", grouping_var, "- skipping."))
       next
     }
     

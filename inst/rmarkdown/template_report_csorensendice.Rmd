@@ -41,7 +41,13 @@ csorensendice <- function(dataset, formula, plot = TRUE,
   
   if (automatic_encoding == TRUE) {
     dataset_factors <- sapply(dataset, is.factor)
+    char_cols <- sapply(dataset, is.character)
+    int_cols <- sapply(dataset, is.integer)
+    date_cols <- sapply(dataset, function(x) inherits(x, 'Date'))
     dataset[dataset_factors] <- lapply(dataset[dataset_factors], as.numeric)
+    dataset[char_cols] <- lapply(dataset[char_cols], function(x) as.numeric(as.factor(x)))
+    dataset[int_cols] <- lapply(dataset[int_cols], function(x) as.numeric(as.factor(x)))
+    dataset[date_cols] <- lapply(dataset[date_cols], function(x) as.numeric(as.factor(x)))
   }
   
   # If the user specified "~index", use the individual mode.
@@ -69,22 +75,24 @@ csorensendice <- function(dataset, formula, plot = TRUE,
       }
     }
     
-    # identify numeric columns
-    numeric_cols <- sapply(dataset_imputed, is.numeric)
-    
     # In this case, grouping is performed for each row (i.e., each observation is its own group).
     # Predictors are all variables except for "index".
-    predictors <- setdiff(names(dataset_imputed)[numeric_cols], "index")
     data_for_dist <- as.matrix(dataset_imputed[, predictors])
     
-    squared_data_for_dist <- sqrt(data_for_dist)
+    num <- as.matrix(dist(data_for_dist, method = 'manhattan'))
+    r_sums <- rowSums(data_for_dist)
+    den <- outer(r_sums, r_sums, FUN = '+')
     
-    D2 <- dist(squared_data_for_dist, method = 'euclide') * 1/sqrt(2)
+    D2 <- (num / den)
     
     if (plot) {
       hc <- hclust(D2, method = method)
       plot(hc, main = "Cluster Dendrogram on index using csorensendice")
-      (x <- identify(hc))
+      tryCatch({
+        suppressWarnings(x <- identify(hc))
+      }, error = function(e) {
+        message("cut of the tree not possible due to few observations")
+      })
       print(hclust(D2, method = method))
     }
     
@@ -107,7 +115,7 @@ csorensendice <- function(dataset, formula, plot = TRUE,
     valid_groups <- groups[group_sizes >= min_group_size]
     
     if (length(valid_groups) < 2) {
-      warning(paste("Not enough valid groups for grouping variable:", grouping_var, "- skipping."))
+      suppressWarnings(paste("Not enough valid groups for grouping variable:", grouping_var, "- skipping."))
       next
     }
     
@@ -129,7 +137,7 @@ csorensendice <- function(dataset, formula, plot = TRUE,
           specie_1 <- means[[i]]
           specie_2 <- means[[j]]
           
-          dice_similarity <- (2 * sum(pmin(specie_1, specie_2))) / (sum(specie_1) + sum(specie_2))
+          dice_similarity <- (2 * sum2(pmin(specie_1, specie_2))) / (sum2(specie_1) + sum2(specie_2))
           sorensendice_distance <- 1 - dice_similarity
           distances[i, j] <- round(sorensendice_distance, digits = 7)
           distances[j, i] <- distances[i, j]
@@ -179,7 +187,7 @@ csorensendice <- function(dataset, formula, plot = TRUE,
           specie_1 <- medians[[i]]
           specie_2 <- medians[[j]]
           
-          dice_similarity <- (2 * sum(pmin(specie_1, specie_2))) / (sum(specie_1) + sum(specie_2))
+          dice_similarity <- (2 * sum2(pmin(specie_1, specie_2))) / (sum2(specie_1) + sum2(specie_2))
           sorensendice_distance <- 1 - dice_similarity
           distances[i, j] <- round(sorensendice_distance, digits = 7)
           distances[j, i] <- distances[i, j]
@@ -228,7 +236,7 @@ csorensendice <- function(dataset, formula, plot = TRUE,
           specie_1 <- sds[[i]]
           specie_2 <- sds[[j]]
           
-          dice_similarity <- (2 * sum(pmin(specie_1, specie_2))) / (sum(specie_1) + sum(specie_2))
+          dice_similarity <- (2 * sum2(pmin(specie_1, specie_2))) / (sum2(specie_1) + sum2(specie_2))
           sorensendice_distance <- 1 - dice_similarity
           distances[i, j] <- round(sorensendice_distance, digits = 7)
           distances[j, i] <- distances[i, j]

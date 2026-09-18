@@ -41,7 +41,13 @@ chellinger <- function(dataset, formula, plot = TRUE,
   
   if (automatic_encoding == TRUE) {
     dataset_factors <- sapply(dataset, is.factor)
+    char_cols <- sapply(dataset, is.character)
+    int_cols <- sapply(dataset, is.integer)
+    date_cols <- sapply(dataset, function(x) inherits(x, 'Date'))
     dataset[dataset_factors] <- lapply(dataset[dataset_factors], as.numeric)
+    dataset[char_cols] <- lapply(dataset[char_cols], function(x) as.numeric(as.factor(x)))
+    dataset[int_cols] <- lapply(dataset[int_cols], function(x) as.numeric(as.factor(x)))
+    dataset[date_cols] <- lapply(dataset[date_cols], function(x) as.numeric(as.factor(x)))
   }
   
   # Handling negative values, transform them in 0
@@ -100,7 +106,11 @@ chellinger <- function(dataset, formula, plot = TRUE,
     if (plot) {
       hc <- hclust(D2, method = method)
       plot(hc, main = "Cluster Dendrogram on index using chellinger")
-      (x <- identify(hc))
+      tryCatch({
+        suppressWarnings(x <- identify(hc))
+      }, error = function(e) {
+        message("cut of the tree not possible due to few observations")
+      })
       print(hclust(D2, method = method))
     }
     
@@ -123,7 +133,7 @@ chellinger <- function(dataset, formula, plot = TRUE,
     valid_groups <- groups[group_sizes >= min_group_size]
     
     if (length(valid_groups) < 2) {
-      warning(paste("Not enough valid groups for grouping variable:", grouping_var, "- skipping."))
+      suppressWarnings(paste("Not enough valid groups for grouping variable:", grouping_var, "- skipping."))
       next
     }
     
@@ -136,7 +146,7 @@ chellinger <- function(dataset, formula, plot = TRUE,
         num_cols <- dt_group[sapply(dt_group, is.numeric)]
         m <- colMeans(num_cols)
         
-        s <- sum(m, na.rm = TRUE)
+        s <- sum2(m, na.rm = TRUE)
         if (s == 0) {
           return(m)
         } else {
@@ -151,7 +161,7 @@ chellinger <- function(dataset, formula, plot = TRUE,
         for (j in (i + 1):n) {
           a <- means[[j]]
           b <- means[[i]]
-          hellinger_dist <- (1 / sqrt(2)) * sqrt(sum((sqrt(a) - sqrt(b))^2))
+          hellinger_dist <- (1 / sqrt(2)) * sqrt(sum2((sqrt(a) - sqrt(b))^2))
           distances[i, j] <- round(hellinger_dist, digits = 7)
           distances[j, i] <- distances[i, j]
         }
@@ -191,7 +201,7 @@ chellinger <- function(dataset, formula, plot = TRUE,
         num_cols <- dt_group[sapply(dt_group, is.numeric)]
         m <- colMedians(as.matrix(num_cols))
         
-        s <- sum(m, na.rm = TRUE)
+        s <- sum2(m, na.rm = TRUE)
         if (s == 0) {
           return(m)
         } else {
@@ -205,7 +215,7 @@ chellinger <- function(dataset, formula, plot = TRUE,
         for (j in (i + 1):n) {
           a <- medians[[j]]
           b <- medians[[i]]
-          hellinger_dist <- (1 / sqrt(2)) * sqrt(sum((sqrt(a) - sqrt(b))^2))
+          hellinger_dist <- (1 / sqrt(2)) * sqrt(sum2((sqrt(a) - sqrt(b))^2))
           distances[i, j] <- round(hellinger_dist, digits = 7) 
           distances[j, i] <- distances[i, j]
         }
@@ -244,7 +254,7 @@ chellinger <- function(dataset, formula, plot = TRUE,
         num_cols <- dt_group[sapply(dt_group, is.numeric)]
         m <- colSds(as.matrix(num_cols))
         
-        s <- sum(m, na.rm = TRUE)
+        s <- sum2(m, na.rm = TRUE)
         if (s == 0) {
           return(m)
         } else {
@@ -258,7 +268,7 @@ chellinger <- function(dataset, formula, plot = TRUE,
         for (j in (i + 1):n) {
           a <- sds[[j]]
           b <- sds[[i]]
-          hellinger_dist <- (1 / sqrt(2)) * sqrt(sum((sqrt(a) - sqrt(b))^2))
+          hellinger_dist <- (1 / sqrt(2)) * sqrt(sum2((sqrt(a) - sqrt(b))^2))
           distances[i, j] <- round(hellinger_dist, digits = 7) 
           distances[j, i] <- distances[i, j]
         }
