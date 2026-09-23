@@ -8053,3 +8053,737 @@ generate_report_csorensendice <- function(dataset, formula, pvalue.method = "per
     stop("Report not supported with index due to permutation & bootstrap methods for p_values calculation.")
   }
 }
+
+#' @name cpearson
+#' @title Calculate the Pearson correlation or dissimilarity for each pair of factors or for the index.
+#' @description
+#' This function takes a dataframe and a variable or variables (two or more) in input, and returns a matrix or matrices (two or more) with the Pearson correlation or dissimilarity about the factors inside them. You can also select "index" to calculate this statistic between each row. 
+#' @param dataset A dataframe.
+#' @param formula The index of the dataframe, otherwise a variable or variables (two or more) with factors which you want to calculate the Pearson correlation or dissimilarity matrix or matrices (two or more). 
+#' @param plot Logical, if TRUE, dendrograms with various agglomeration metrics for factors (two or more) are displayed. With "index" in formula, a dendrogram considering the observation is displayed.
+#' @param min_group_size Minimum group size to maintain. The default value is 3, therefore groups, inside variables, with less than 3 observations will be discarded. For "index", this value is always 1.
+#' @param method The agglomeration method for calculating dissimilarities between observations. Available methods are "ward.D", "ward.D2", "single", "complete", "average", "mcquitty", "median" or "centroid".
+#' @param max_index_sample A number of random samples from a dataset for which you want to calculate the statistic for index mode, useful with very large dataset.
+#' @param automatic_encoding Logical, if TRUE, names inside factor variables will be transformed in numbers with ordinal order (1,2,....). 
+#' @param na_removal Logical, if TRUE, missing value removal on rows is performed.
+#' @param grouping_stat Logical, if TRUE, the Pearson correlation or dissimilarity between factors is printed.
+#' @param dissimilarity If TRUE, default, the dissimilarity Pearson's R is displayed.
+#' @param t_test If TRUE, statistical significance using the t-student distribution is performed. 
+#' @return According to the option chosen in formula, with "index" the Pearson' R matrix will be printed; instead, by specifying variables, the Pearson correlations matrix or matrices (two or more) between each pair of groups and, optionally, the plot or plots (two or more) will be printed.
+#' @note
+#' If "index" is selected with variables, only correlations between rows are calculated. Therefore, this snippet: "cpearson(mtcars, ~am + carb + index)" will print correlations only considering "index". Optionally, rows with NA values can be omitted and negative values are transformed in 0.
+#' 
+#' @examples
+#' # Example with the CO2 dataset
+#' 
+#' table(CO2$Plant)
+#' 
+#' cpearson(CO2, ~Plant, 
+#'    plot = TRUE, 
+#'    grouping_stat = 'median', 
+#'    automatic_encoding = TRUE)
+#'
+#' # Example with the airquality dataset
+#' 
+#' summary(airquality)
+#' 
+#' cpearson(airquality, ~index, 
+#'    plot = TRUE, 
+#'    na_removal = TRUE, 
+#'    max_index_sample = 40)
+#' @export
+cpearson <- function(dataset, formula, plot = TRUE, min_group_size = 3, method = 'average', max_index_sample = NULL, automatic_encoding = FALSE, na_removal = FALSE, grouping_stat = TRUE, dissimilarity = TRUE, t_test = TRUE) {
+  
+  if(!is.data.frame(dataset)) {
+    stop("The input must be a dataframe")
+  }
+  
+  grouping_vars <- all.vars(formula)
+  if(length(grouping_vars) == 0) {
+    stop("At least one grouping variable must be specified in the formula")
+  }
+  
+  if(!all(grouping_vars %in% names(dataset)) && !("index" %in% grouping_vars)) {
+    stop("Some grouping variables are not present in the dataset")
+  }
+  
+  if (!("index" %in% grouping_vars) && !missing(method)) {
+    message("When grouping variable is not index, we use all agglomeration methods")
+  }
+  
+  if ((dissimilarity == FALSE) && (plot == TRUE)) {
+    stop("Dendrogram is only possible with dissimilarities")
+  }
+  
+  if (!("index" %in% grouping_vars) && !missing(max_index_sample)) {
+    message("max_index_sample is total when we specify grouping_vars")
+  }
+  
+  if (t_test == TRUE && dissimilarity == TRUE) {
+    stop("t-test pvalue is only possible with correlation matrices")
+  }
+  
+  if (("index" %in% grouping_vars) && !missing(grouping_stat)) {
+    message("grouping_stat is only available with factors")
+  }
+  
+  if (automatic_encoding == TRUE) {
+    dataset_factors <- sapply(dataset, is.factor)
+    char_cols <- sapply(dataset, is.character)
+    int_cols <- sapply(dataset, is.integer)
+    date_cols <- sapply(dataset, function(x) inherits(x, 'Date'))
+    dataset[dataset_factors] <- lapply(dataset[dataset_factors], as.numeric)
+    dataset[char_cols] <- lapply(dataset[char_cols], function(x) as.numeric(as.factor(x)))
+    dataset[int_cols] <- lapply(dataset[int_cols], function(x) as.numeric(as.factor(x)))
+    dataset[date_cols] <- lapply(dataset[date_cols], function(x) as.numeric(as.factor(x)))
+  }
+  
+  # If the user specify "index", use the individual mode
+  if ("index" %in% grouping_vars) {
+    if (!("index" %in% names(dataset))) {
+      message("Formula '~index' was used. In 'index' mode, 'min_group_size' is always 1.")
+    }
+    
+    if (na_removal == TRUE) {
+      dataset_imputed <- na.omit(dataset)
+    } else {
+      dataset_imputed <- dataset
+    }
+    
+    if (!missing(max_index_sample)) {
+      n_total <- nrow(dataset_imputed)
+      if (n_total > max_index_sample) {
+        message("Dataset of ", n_total, "rows. A random sampling of ", max_index_sample, "is performed")
+        set.seed(111)
+        idx_sample <- sample(seq_len(n_total), max_index_sample)
+        dataset_imputed <- dataset_imputed[idx_sample, ]
+      }
+    }
+    
+    # identify numeric columns
+    numeric_cols <- sapply(dataset_imputed, is.numeric) 
+    data_for_dist <- dataset_imputed[, numeric_cols]
+    
+    # Calculate the Pearson R
+    res <- cor(data_for_dist, method = 'pearson')
+    
+    if (dissimilarity == TRUE) { 
+      res <- (1 - res) / 2
+    }
+    
+    res_list <- list(index = list(distances = res))
+    
+    if (t_test == TRUE) {
+      t <- res * sqrt((nrow(data_for_dist)-2) / (1 - res^2))
+      test_pvalue <- 2 * pt(-abs(t), df = nrow(data_for_dist) - 2)
+      res_list$index$p_values <- round(test_pvalue, digits = 7)
+    }
+    
+    dendrogram <- as.dist(res)
+    
+    if (plot) {
+      hc <- hclust(dendrogram, method = method)
+      if (dissimilarity == TRUE) {
+        plot(hc, main = "Cluster dissimilarity dendrogram on index considering Pearson correlation")
+      }
+      else if (dissimilarity == FALSE) {
+        plot(hc, main = "Cluster correlation dendrogram on index considering Pearson correlation")
+      }
+      tryCatch({
+        suppressWarnings(x <- identify(hc))
+      }, error = function(e) {
+        message("cut of the tree not possible due to few observations")
+      })
+      print(hc)
+    }
+    
+    return(res_list)
+  }
+  
+  dt <- as.data.frame(dataset)
+  if (na_removal == TRUE) {
+    dt <- na.omit(dt)
+  } else {
+    dt <- dt
+  }
+  
+  result <- list()
+  plot_list <- list()
+  
+  for (grouping_var in grouping_vars) {
+    
+    p_values <- NULL
+    
+    groups <- split(dt, dt[[grouping_var]])
+    group_size <- sapply(groups, nrow)
+    valid_groups <- groups[group_size >= min_group_size]
+    
+    if (length(valid_groups) < 2) {
+      suppressWarnings(paste("Not enough valid group for grouping variable: ", grouping_var, "- skipping."))
+      next
+    }
+    
+    group_names <- names(valid_groups)
+    n <- length(valid_groups)
+    
+    if (grouping_stat == TRUE) {
+      COLS <- lapply(valid_groups, function(dt_group) {
+        num_cols <- dt_group[sapply(dt_group, is.numeric)]
+        (as.matrix(num_cols))
+      })
+      
+      distances <- matrix(0, nrow = n, ncol = n)
+      rownames(distances) <- colnames(distances) <- group_names
+      
+      for (i in 1:n) {
+        cols_i <- COLS[[i]]
+        for (j in 1:n) {
+          if (i != j) {
+            cols_j <- COLS[[j]]
+            corr <- cor(as.vector(cols_i), as.vector(cols_j), method = 'pearson') 
+            if (dissimilarity == TRUE) {
+              corr <- (1 - corr) / 2
+            }
+            distances[i, j] <- round(corr, digits = 7)
+            distances[j,i] <- distances[i, j]
+            diag(distances) <- 1
+            if (t_test == TRUE) {
+              cor_matrix <- distances
+              diag(cor_matrix) <- NA
+              
+              N <- length(as.vector(COLS[[1]]))
+              
+              t <- cor_matrix * sqrt((N - 2) / (1 - cor_matrix^2))
+              p_values <- 2 * pt(-abs(t), df = N - 2)
+              diag(p_values) <- 1.0
+            }
+          }
+        }
+      }
+      
+      if (plot == TRUE) {
+        dist_obj <- as.dist(distances)
+        if (attr(dist_obj, "Size") > 2) {
+          op <- par(mfrow = c(3,3))
+          hc <- hclust(dist_obj, method = 'ward.D')
+          print(hc)
+          hc1 <- hclust(dist_obj, method = 'ward.D2')
+          print(hc1[['labels']])
+          hc2 <- hclust(dist_obj, method = 'single')
+          hc3 <- hclust(dist_obj, method = 'complete')
+          hc4 <- hclust(dist_obj, method = 'average')
+          hc5 <- hclust(dist_obj, method = 'mcquitty')
+          hc6 <- hclust(dist_obj, method = 'median')
+          hc7 <- hclust(dist_obj, method = 'centroid')
+          plot(hc, main = " ")
+          plot(hc1, main = " ")
+          plot(hc2, main = " ")
+          plot(hc3, main = " ")
+          plot(hc4, main = " ")
+          plot(hc5, main = " ")
+          plot(hc6, main = " ")
+          plot(hc7, main = " ")
+          if (dissimilarity == FALSE) { 
+            mtext(paste("Correlation dendrogram on groups in: ", grouping_var, "with various agglomeration method using cpearson"), side = 3, outer = TRUE, cex = 1, font = 2, line = -2)
+          } else if (dissimilarity == TRUE) {
+            mtext(paste("Dissimilarity dendrogram on groups in: ", grouping_var, "with various agglomeration method using cpearson"), side = 3, outer = TRUE, cex = 1, font = 2, line = -2)
+          }
+          par(mfrow = c(1,1))
+        } else {
+          message(paste("Skipping plot for: ", grouping_var, "not enough item to cluster"))
+        }
+      }
+      
+      result[[grouping_var]] <- list(distances = distances, p_values = p_values)
+    }
+    return(result)
+  }
+}
+
+#' @name cspearman
+#' @title Calculate the Spearman correlation or dissimilarity for each pair of factors or for the index.
+#' @description
+#' This function takes a dataframe and a variable or variables (two or more) in input, and returns a matrix or matrices (two or more) with the Spearman correlation or dissimilarity about the factors inside them. You can also select "index" to calculate this statistic between each row. 
+#' @param dataset A dataframe.
+#' @param formula The index of the dataframe, otherwise a variable or variables (two or more) with factors which you want to calculate the Spearman correlation or dissimilarity matrix or matrices (two or more). 
+#' @param plot Logical, if TRUE, dendrograms with various agglomeration metrics for factors (two or more) are displayed. With "index" in formula, a dendrogram considering the observation is displayed.
+#' @param min_group_size Minimum group size to maintain. The default value is 3, therefore groups, inside variables, with less than 3 observations will be discarded. For "index", this value is always 1.
+#' @param method The agglomeration method for calculating dissimilarities between observations. Available methods are "ward.D", "ward.D2", "single", "complete", "average", "mcquitty", "median" or "centroid".
+#' @param max_index_sample A number of random samples from a dataset for which you want to calculate the statistic for index mode, useful with very large dataset.
+#' @param automatic_encoding Logical, if TRUE, names inside factor variables will be transformed in numbers with ordinal order (1,2,....). 
+#' @param na_removal Logical, if TRUE, missing value removal on rows is performed.
+#' @param grouping_stat Logical, if TRUE, the Spearman correlation or dissimilarity between factors is printed.
+#' @param dissimilarity If TRUE, default, the dissimilarity is displayed.
+#' @param t_test If TRUE, statistical significance using the t-student distribution is performed. 
+#' @return According to the option chosen in formula, with "index" the Spearman matrix will be printed; instead, by specifying variables, the Spearman correlations matrix or matrices (two or more) between each pair of groups and, optionally, the plot or plots (two or more) will be printed.
+#' @note
+#' If "index" is selected with variables, only correlations between rows are calculated. Therefore, this snippet: "cspearman(mtcars, ~am + carb + index)" will print correlations only considering "index". Optionally, rows with NA values can be omitted and negative values are transformed in 0.
+#' 
+#' @examples
+#' # Example with the CO2 dataset
+#' 
+#' table(CO2$Plant)
+#' 
+#' cspearman(CO2, ~Plant, 
+#'    plot = TRUE, 
+#'    grouping_stat = 'median', 
+#'    automatic_encoding = TRUE)
+#'
+#' # Example with the airquality dataset
+#' 
+#' summary(airquality)
+#' 
+#' cspearman(airquality, ~index, 
+#'    plot = TRUE, 
+#'    na_removal = TRUE, 
+#'    max_index_sample = 40)
+#' @export
+cspearman <- function(dataset, formula, plot = TRUE, min_group_size = 3, method = 'average', max_index_sample = NULL, automatic_encoding = FALSE, na_removal = FALSE, grouping_stat = TRUE, dissimilarity = TRUE, t_test = TRUE) {
+  
+  if (!(is.data.frame(dataset))) {
+    stop("The input must be a dataframe")
+  }
+  
+  grouping_vars <- all.vars(formula)
+  if (length(grouping_vars) == 0) {
+    stop("At least one grouping variable must be specified in the formula")
+  }
+  
+  if(!all(grouping_vars %in% names(dataset)) && !("index" %in% grouping_vars)) {
+    stop("Some grouping variables are not present in the dataset")
+  }
+  
+  if (!("index" %in% grouping_vars) && !missing(method)) {
+    message("When grouping variable is not index, we use all agglomeration methods")
+  }
+  
+  if ((dissimilarity == FALSE) && (plot == TRUE)) {
+    stop("Dendrogram is only possible with dissimilarities")
+  }
+  
+  if (t_test == TRUE && dissimilarity == TRUE) {
+    stop("t-test pvalue is only possible with correlation matrices")
+  }
+  
+  if (("index" %in% grouping_vars) && !missing(grouping_stat)) {
+    message("grouping_stat is only available with factors")
+  }
+  
+  if (automatic_encoding == TRUE) {
+    dataset_factors <- sapply(dataset, is.factor)
+    char_cols <- sapply(dataset, is.character)
+    int_cols <- sapply(dataset, is.integer)
+    date_cols <- sapply(dataset, function(x) inherits(x, 'Date'))
+    dataset[dataset_factors] <- lapply(dataset[dataset_factors], as.numeric)
+    dataset[char_cols] <- lapply(dataset[char_cols], function(x) as.numeric(as.factor(x)))
+    dataset[int_cols] <- lapply(dataset[int_cols], function(x) as.numeric(as.factor(x)))
+    dataset[date_cols] <- lapply(dataset[date_cols], function(x) as.numeric(as.factor(x)))
+  }
+  
+  # If the user specify "index", use the individual mode
+  if ("index" %in% grouping_vars) {
+    if (!("index" %in% names(dataset))) {
+      message("Formula '~index' was used. In 'index' mode, 'min_group_size' is always 1.")
+    }
+    
+    if (na_removal == TRUE) {
+      dataset_imputed <- na.omit(dataset)
+    } else {
+      dataset_imputed <- dataset
+    }
+    
+    if (!missing(max_index_sample)) {
+      n_total <- nrow(dataset_imputed)
+      if (n_total > max_index_sample) {
+        message("Dataset of ", n_total, "rows. A random sampling of ", max_index_sample, "is performed")
+        set.seed(111)
+        idx_sample <- sample(seq_len(n_total), max_index_sample)
+        dataset_imputed <- dataset_imputed[idx_sample, ]
+      }
+    }
+    
+    # identify numeric columns
+    numeric_cols <- sapply(dataset_imputed, is.numeric) 
+    data_for_dist <- dataset_imputed[, numeric_cols]
+    
+    # Calculate the Spearman Rho
+    res <- cor(data_for_dist, method = 'spearman')
+    
+    if (dissimilarity == TRUE) {
+      res <- (1 - res) / 2
+    }
+    
+    res_list <- list(index = list(distances = res))
+    
+    if (t_test == TRUE) {
+      t <- res * sqrt( (nrow(data_for_dist) - 2) / (1 - res^2) )
+      test_pvalue <- 2 * pt(-abs(t), df = nrow(data_for_dist) - 2)
+      res_list$index$p_values <- round(test_pvalue, digits = 7)
+    }
+    
+    dendrogram <- as.dist(res)
+    
+    if (plot == TRUE) {
+      hc <- hclust(dendrogram, method = method)
+      if (dissimilarity == TRUE) {
+        plot(hc, main = "Cluster dissimilarity dendrogram on index considering Spearman correlation")
+      }
+      else if (dissimilarity == FALSE) {
+        plot(hc, main = "Cluster correlation dendrogram on index considering Spearman correlation")
+      }
+      tryCatch({
+        suppressWarnings(x <- identify(hc))
+      }, error = function(e) {
+        message("cut of the tree not possible due to few observations")
+      })
+      print(hc)
+    }
+    return(res_list)
+  }
+  
+  dt <- as.data.frame(dataset)
+  if (na_removal == TRUE) {
+    dt <- na.omit(dt)
+  } else {
+    dt <- dt
+  }
+  
+  result <- list()
+  plot_list <- list()
+  
+  for (grouping_var in grouping_vars) {
+    
+    p_values <- NULL
+    
+    groups <- split(dt, dt[[grouping_var]])
+    group_size <- sapply(groups, nrow)
+    valid_group <- groups[group_size >= min_group_size]
+    
+    if (length(valid_groups) < 2) {
+      suppressWarnings(paste("Not enough valid groups for grouping variable: ", grouping_var, "- skipping"))
+      next
+    }
+    group_names <- names(valid_groups)
+    n <- length(valid_groups)
+    
+    if (grouping_stat == TRUE) {
+      COLS <- lapply(valid_groups, function(dt_group) {
+        num_cols <- dt_group[sapply(dt_group, is.numeric)]
+        as.matrix(num_cols)
+      })
+      
+      distances <- matrix(0, nrow = n, ncol = n)
+      rownames(distances) <- colnames(distances) <- group_names
+      
+      for (i in 1:n) {
+        cols_i <- COLS[[i]]
+        for (j in 1:n) {
+          if (i != j) {
+            cols_j <- COLS[[j]]
+            corr <- cor(as.vector(cols_i), as.vector(cols_j), method = 'spearman') 
+            if (dissimilarity == TRUE) {
+              corr <- (1 - corr) / 2
+            }
+            distances[i, j] <- round(corr, digits = 7)
+            distances[j,i] <- distances[i, j]
+            diag(distances) <- 1
+            if (t_test == TRUE) {
+              cor_matrix <- distances
+              diag(cor_matrix) <- NA
+              
+              N <- length(as.vector(COLS[[1]]))
+              
+              t <- cor_matrix * sqrt((N - 2) / (1 - cor_matrix^2))
+              p_values <- 2 * pt(-abs(t), df = N - 2)
+              diag(p_values) <- 1.0
+            }
+          }
+        }
+      }
+      
+      if (plot == TRUE) {
+        dist_obj <- as.dist(distances)
+        if (attr(dist_obj, "Size") > 2) {
+          op <- par(mfrow = c(3,3))
+          hc <- hclust(dist_obj, method = 'ward.D')
+          print(hc)
+          hc1 <- hclust(dist_obj, method = 'ward.D2')
+          print(hc1[['labels']])
+          hc2 <- hclust(dist_obj, method = 'single')
+          hc3 <- hclust(dist_obj, method = 'complete')
+          hc4 <- hclust(dist_obj, method = 'average')
+          hc5 <- hclust(dist_obj, method = 'mcquitty')
+          hc6 <- hclust(dist_obj, method = 'median')
+          hc7 <- hclust(dist_obj, method = 'centroid')
+          plot(hc, main = " ")
+          plot(hc1, main = " ")
+          plot(hc2, main = " ")
+          plot(hc3, main = " ")
+          plot(hc4, main = " ")
+          plot(hc5, main = " ")
+          plot(hc6, main = " ")
+          plot(hc7, main = " ")
+          if (dissimilarity == FALSE) { 
+            mtext(paste("Correlation dendrogram on groups in: ", grouping_var, "with various agglomeration method using cspearman"), side = 3, outer = TRUE, cex = 1, font = 2, line = -2)
+          } else if (dissimilarity == TRUE) {
+            mtext(paste("Dissimilarity dendrogram on groups in: ", grouping_var, "with various agglomeration method using cspearman"), side = 3, outer = TRUE, cex = 1, font = 2, line = -2)
+          }
+          par(mfrow = c(1,1))
+        } else {
+          message(paste("Skipping plot for: ", grouping_var, "not enough item to cluster"))
+        }
+      }
+      
+      result[[grouping_var]] <- list(distances = distances, p_values = p_values)
+    }
+    return(result)
+  }
+}
+
+#' @name ckendall
+#' @title Calculate the Kendall correlation or dissimilarity for each pair of factors or for the index.
+#' @description
+#' This function takes a dataframe and a variable or variables (two or more) in input, and returns a matrix or matrices (two or more) with the Kendall correlation or dissimilarity about the factors inside them. You can also select "index" to calculate this statistic between each row. 
+#' @param dataset A dataframe.
+#' @param formula The index of the dataframe, otherwise a variable or variables (two or more) with factors which you want to calculate the Kendall correlation or dissimilarity matrix or matrices (two or more). 
+#' @param plot Logical, if TRUE, dendrograms with various agglomeration metrics for factors (two or more) are displayed. With "index" in formula, a dendrogram considering the observation is displayed.
+#' @param min_group_size Minimum group size to maintain. The default value is 3, therefore groups, inside variables, with less than 3 observations will be discarded. For "index", this value is always 1.
+#' @param method The agglomeration method for calculating dissimilarities between observations. Available methods are "ward.D", "ward.D2", "single", "complete", "average", "mcquitty", "median" or "centroid".
+#' @param max_index_sample A number of random samples from a dataset for which you want to calculate the statistic for index mode, useful with very large dataset.
+#' @param automatic_encoding Logical, if TRUE, names inside factor variables will be transformed in numbers with ordinal order (1,2,....). 
+#' @param na_removal Logical, if TRUE, missing value removal on rows is performed.
+#' @param grouping_stat Logical, if TRUE, the Kendall correlation or dissimilarity between factors is printed.
+#' @param dissimilarity If TRUE, default, the dissimilarity is displayed.
+#' @param z_test If TRUE, statistical significance using the standard normal distribution is performed. 
+#' @return According to the option chosen in formula, with "index" the Kendall matrix will be printed; instead, by specifying variables, the Kendall correlations matrix or matrices (two or more) between each pair of groups and, optionally, the plot or plots (two or more) will be printed.
+#' @note
+#' If "index" is selected with variables, only correlations between rows are calculated. Therefore, this snippet: "ckendall(mtcars, ~am + carb + index)" will print correlations only considering "index". Optionally, rows with NA values can be omitted and negative values are transformed in 0.
+#' 
+#' @examples
+#' # Example with the CO2 dataset
+#' 
+#' table(CO2$Plant)
+#' 
+#' ckendall(CO2, ~Plant, 
+#'    plot = TRUE, 
+#'    grouping_stat = 'median', 
+#'    automatic_encoding = TRUE)
+#'
+#' # Example with the airquality dataset
+#' 
+#' summary(airquality)
+#' 
+#' ckendall(airquality, ~index, 
+#'    plot = TRUE, 
+#'    na_removal = TRUE, 
+#'    max_index_sample = 40)
+#' @export
+ckendall <- function(dataset, formula, plot = TRUE, min_group_size = 3, method = 'average', max_index_sample = NULL, automatic_encoding = FALSE, na_removal = FALSE, grouping_stat = TRUE, dissimilarity = TRUE, z_test = TRUE) {
+  
+  if (!(is.data.frame(dataset))) {
+    stop("The input must be a dataframe")
+  }
+  
+  grouping_vars <- all.vars(formula)
+  if (length(grouping_vars) == 0) {
+    stop("At least one grouping variable must be specified in the formula")
+  }
+  
+  if(!all(grouping_vars %in% names(dataset)) && !("index" %in% grouping_vars)) {
+    stop("Some grouping variables are not present in the dataset")
+  }
+  
+  if (!("index" %in% grouping_vars) && !missing(method)) {
+    message("When grouping variable is not index, we use all agglomeration methods")
+  }
+  
+  if ((dissimilarity == FALSE) && (plot == TRUE)) {
+    stop("Dendrogram is only possible with dissimilarities")
+  }
+  
+  if (z_test == TRUE && dissimilarity == TRUE) {
+    stop("z-test pvalue is only possible with correlation matrices")
+  }
+  
+  if (("index" %in% grouping_vars) && !missing(grouping_stat)) {
+    message("grouping_stat is only available with factors")
+  }
+  
+  if (automatic_encoding == TRUE) {
+    dataset_factors <- sapply(dataset, is.factor)
+    char_cols <- sapply(dataset, is.character)
+    int_cols <- sapply(dataset, is.integer)
+    date_cols <- sapply(dataset, function(x) inherits(x, 'Date'))
+    dataset[dataset_factors] <- lapply(dataset[dataset_factors], as.numeric)
+    dataset[char_cols] <- lapply(dataset[char_cols], function(x) as.numeric(as.factor(x)))
+    dataset[int_cols] <- lapply(dataset[int_cols], function(x) as.numeric(as.factor(x)))
+    dataset[date_cols] <- lapply(dataset[date_cols], function(x) as.numeric(as.factor(x)))
+  }
+  
+  # If the user specify "index", use the individual mode
+  if ("index" %in% grouping_vars) {
+    if (!("index" %in% names(dataset))) {
+      message("Formula '~index' was used. In 'index' mode, 'min_group_size' is always 1.")
+    }
+    
+    if (na_removal == TRUE) {
+      dataset_imputed <- na.omit(dataset)
+    } else {
+      dataset_imputed <- dataset
+    }
+    
+    if (!missing(max_index_sample)) {
+      n_total <- nrow(dataset_imputed)
+      if (n_total > max_index_sample) {
+        message("Dataset of ", n_total, "rows. A random sampling of ", max_index_sample, "is performed")
+        set.seed(111)
+        idx_sample <- sample(seq_len(n_total), max_index_sample)
+        dataset_imputed <- dataset_imputed[idx_sample, ]
+      }
+    }
+    
+    # identify numeric columns
+    numeric_cols <- sapply(dataset_imputed, is.numeric) 
+    data_for_dist <- dataset_imputed[, numeric_cols]
+    
+    # Calculate the Kendall tau
+    res <- cor(data_for_dist, method = 'kendall')
+    
+    if (dissimilarity == TRUE) {
+      res <- (1 - res) / 2
+    }
+    
+    res_list <- list(index = list(distances = res))
+    
+    if (z_test == TRUE) {
+      if (nrow(data_for_dist < 10)) {
+        message("z-test is reliable only if observations are 10 or more")
+      }
+      n <- nrow(data_for_dist)
+      z <- (3 * res) * ( sqrt(n*(n-1)) / (sqrt(2 * ((2*n)+5))))
+      test_zvalue <- 2 * pnorm(-abs(z), mean = 0, sd = 1)
+      res_list$index$p_values <- round(test_zvalue, digits = 7)
+    }
+    
+    dendrogram <- as.dist(res)
+    
+    if (plot == TRUE) {
+      hc <- hclust(dendrogram, method = method)
+      if (dissimilarity == TRUE) {
+        plot(hc, main = "Cluster dissimilarity dendrogram on index considering Kendall correlation")
+      }
+      else if (dissimilarity == FALSE) {
+        plot(hc, main = "Cluster correlation dendrogram on index considering Kendall correlation")
+      }
+      tryCatch({
+        suppressWarnings(x <- identify(hc))
+      }, error = function(e) {
+        message("cut of the tree not possible due to few observations")
+      })
+      print(hc)
+    }
+    return(res_list)
+  }
+  
+  dt <- as.data.frame(dataset)
+  if (na_removal == TRUE) {
+    dt <- na.omit(dt)
+  } else {
+    dt <- dt
+  }
+  
+  result <- list()
+  plot_list <- list()
+  
+  for (grouping_var in grouping_vars) {
+    
+    p_values <- NULL
+    
+    groups <- split(dt, dt[[grouping_var]])
+    group_size <- sapply(groups, nrow)
+    valid_groups <- groups[group_size >= min_group_size]
+    
+    if (length(valid_groups) < 2) {
+      suppressWarnings(paste("Not enough valid groups for grouping variable: ", grouping_var, "- skipping"))
+      next
+    }
+    group_names <- names(valid_groups)
+    n <- length(valid_groups)
+    
+    if (grouping_stat == TRUE) {
+      COLS <- lapply(valid_groups, function(dt_group) {
+        num_cols <- dt_group[sapply(dt_group, is.numeric)]
+        as.matrix(num_cols)
+      })
+      
+      distances <- matrix(0, nrow = n, ncol = n)
+      rownames(distances) <- colnames(distances) <- group_names
+      
+      for (i in 1:n) {
+        cols_i <- COLS[[i]]
+        for (j in 1:n) {
+          if (i != j) {
+            cols_j <- COLS[[j]]
+            corr <- cor(as.vector(cols_i), as.vector(cols_j), method = 'kendall') 
+            if (dissimilarity == TRUE) {
+              corr <- (1 - corr) / 2
+            }
+            distances[i, j] <- round(corr, digits = 7)
+            distances[j,i] <- distances[i, j]
+            diag(distances) <- 1
+            if (z_test == TRUE) {
+              cor_matrix <- distances
+              diag(cor_matrix) <- NA
+              
+              N <- length(as.vector(COLS[[1]]))
+              
+              z <- (3 * cor_matrix) * ( sqrt(N*(N-1)) / (sqrt(2 * ((2*N)+5))))
+              p_values <- 2 * pnorm(-abs(z), mean = 0, sd = 1)
+              diag(p_values) <- 1.0
+            }
+          }
+        }
+      }
+      
+      if (plot == TRUE) {
+        dist_obj <- as.dist(distances)
+        if (attr(dist_obj, "Size") > 2) {
+          op <- par(mfrow = c(3,3))
+          hc <- hclust(dist_obj, method = 'ward.D')
+          print(hc)
+          hc1 <- hclust(dist_obj, method = 'ward.D2')
+          print(hc1[['labels']])
+          hc2 <- hclust(dist_obj, method = 'single')
+          hc3 <- hclust(dist_obj, method = 'complete')
+          hc4 <- hclust(dist_obj, method = 'average')
+          hc5 <- hclust(dist_obj, method = 'mcquitty')
+          hc6 <- hclust(dist_obj, method = 'median')
+          hc7 <- hclust(dist_obj, method = 'centroid')
+          plot(hc, main = " ")
+          plot(hc1, main = " ")
+          plot(hc2, main = " ")
+          plot(hc3, main = " ")
+          plot(hc4, main = " ")
+          plot(hc5, main = " ")
+          plot(hc6, main = " ")
+          plot(hc7, main = " ")
+          if (dissimilarity == FALSE) { 
+            mtext(paste("Correlation dendrogram on groups in: ", grouping_var, "with various agglomeration method using ckendall"), side = 3, outer = TRUE, cex = 1, font = 2, line = -2)
+          } else if (dissimilarity == TRUE) {
+            mtext(paste("Dissimilarity dendrogram on groups in: ", grouping_var, "with various agglomeration method using ckendall"), side = 3, outer = TRUE, cex = 1, font = 2, line = -2)
+          }
+          par(mfrow = c(1,1))
+        } else {
+          message(paste("Skipping plot for: ", grouping_var, "not enough item to cluster"))
+        }
+      }
+      
+      result[[grouping_var]] <- list(distances = distances, p_values = p_values)
+    }
+    return(result)
+  }
+}
+
+
+
+

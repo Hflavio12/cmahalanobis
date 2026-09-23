@@ -9,8 +9,6 @@ params:
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Assuming R Markdown package is installed
 
-knitr::opts_chunk$set(echo = FALSE)
-
 chellinger <- function(dataset, formula, plot = TRUE, 
                        min_group_size = 3, method = "average", max_index_sample = NULL, automatic_encoding = FALSE, na_removal = FALSE, grouping_stat = 'mean') {
   
