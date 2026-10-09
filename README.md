@@ -45,6 +45,9 @@ remotes::install_github('Hflavio12/cmahalanobis')
 | `cmanhattan()` | Calculate the Manhattan distances for each pair of factors or for the index |
 | `cminkowski()` | Calculate the Minkowski distances for each pair of factors or for the index. |
 | `csorensendice()` | Calculate the Sorensen-Dice dissimilarities for each pair of factors or for the index. |
+| `cpearson()` | Calculate the Pearson dissimilarities or correlation for each pair of factors or for the index. |
+| `ckendall()` | Calculate the Kendall dissimilarities or correlation for each pair of factors or for the index. |
+| `cspearman()` | Calculate the Spearman dissimilarities or correlation for each pair of factors or for the index. |
 
 ### Pvalues calculation
 
