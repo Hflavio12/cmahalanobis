@@ -68,4 +68,5 @@ ckendall(airquality, ~index,
    plot = TRUE, 
    na_removal = TRUE, 
    max_index_sample = 40)
+   
 }

@@ -58,7 +58,7 @@ csorensendice(CO2, ~Plant,
 
 summary(airquality)
 
-csorensendice(airquality, ~index, 
+res <- csorensendice(airquality, ~index, 
    plot = TRUE, 
    na_removal = TRUE, 
    max_index_sample = 40)

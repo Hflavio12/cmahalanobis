@@ -1,6 +1,6 @@
 # cmahalanobis.R
 
-#' @importFrom stats mahalanobis cov var as.formula dist as.dist hclust na.omit pchisq sd
+#' @importFrom stats mahalanobis cov var as.formula dist as.dist hclust na.omit pchisq sd pnorm cor pt 
 #' @importFrom graphics identify par mtext
 #' @importFrom matrixStats sum2 colMedians colSds rowSums2
 #' 
@@ -7482,7 +7482,7 @@ generate_report_cbraycurtis <- function(dataset, formula, pvalue.method = "permu
 #' 
 #' summary(airquality)
 #' 
-#' csorensendice(airquality, ~index, 
+#' res <- csorensendice(airquality, ~index, 
 #'    plot = TRUE, 
 #'    na_removal = TRUE, 
 #'    max_index_sample = 40)
@@ -7554,6 +7554,8 @@ csorensendice <- function(dataset, formula, plot = TRUE,
     
     # In this case, grouping is performed for each row (i.e., each observation is its own group).
     # Predictors are all variables except for "index".
+    numeric_cols <- sapply(dataset_imputed, is.numeric)
+    predictors <- setdiff(names(dataset_imputed)[numeric_cols], "index")
     data_for_dist <- as.matrix(dataset_imputed[, predictors])
     
     num <- as.matrix(dist(data_for_dist, method = 'manhattan'))
@@ -7563,14 +7565,14 @@ csorensendice <- function(dataset, formula, plot = TRUE,
     D2 <- (num / den)
     
     if (plot) {
-      hc <- hclust(D2, method = method)
+      hc <- hclust(as.dist(D2), method = method)
       plot(hc, main = "Cluster Dendrogram on index using csorensendice")
       tryCatch({
         suppressWarnings(x <- identify(hc))
       }, error = function(e) {
         message("cut of the tree not possible due to few observations")
       })
-      print(hclust(D2, method = method))
+      print(hclust(as.dist(D2), method = method))
     }
     
     return(list(index = list(distances = as.matrix(D2))))
@@ -8119,7 +8121,7 @@ cpearson <- function(dataset, formula, plot = TRUE, min_group_size = 3, method =
     message("max_index_sample is total when we specify grouping_vars")
   }
   
-  if (t_test == TRUE && dissimilarity == TRUE) {
+  if (t_test == TRUE && dissimilarity == FALSE) {
     stop("t-test pvalue is only possible with correlation matrices")
   }
   
@@ -8361,7 +8363,7 @@ cspearman <- function(dataset, formula, plot = TRUE, min_group_size = 3, method 
     stop("Dendrogram is only possible with dissimilarities")
   }
   
-  if (t_test == TRUE && dissimilarity == TRUE) {
+  if (t_test == TRUE && dissimilarity == FALSE) {
     stop("t-test pvalue is only possible with correlation matrices")
   }
   
@@ -8457,7 +8459,7 @@ cspearman <- function(dataset, formula, plot = TRUE, min_group_size = 3, method 
     
     groups <- split(dt, dt[[grouping_var]])
     group_size <- sapply(groups, nrow)
-    valid_group <- groups[group_size >= min_group_size]
+    valid_groups <- groups[group_size >= min_group_size]
     
     if (length(valid_groups) < 2) {
       suppressWarnings(paste("Not enough valid groups for grouping variable: ", grouping_var, "- skipping"))
@@ -8577,6 +8579,7 @@ cspearman <- function(dataset, formula, plot = TRUE, min_group_size = 3, method 
 #'    plot = TRUE, 
 #'    na_removal = TRUE, 
 #'    max_index_sample = 40)
+#'    
 #' @export
 ckendall <- function(dataset, formula, plot = TRUE, min_group_size = 3, method = 'average', max_index_sample = NULL, automatic_encoding = FALSE, na_removal = FALSE, grouping_stat = TRUE, dissimilarity = TRUE, z_test = TRUE) {
   
@@ -8601,7 +8604,7 @@ ckendall <- function(dataset, formula, plot = TRUE, min_group_size = 3, method =
     stop("Dendrogram is only possible with dissimilarities")
   }
   
-  if (z_test == TRUE && dissimilarity == TRUE) {
+  if (z_test == TRUE && dissimilarity == FALSE) {
     stop("z-test pvalue is only possible with correlation matrices")
   }
   
